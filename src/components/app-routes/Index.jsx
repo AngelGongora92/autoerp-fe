@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
-import OrdersPage from "../../pages/orders";
-import UsersPage from "../../pages/users";
-import AppointmentsPage from "../../pages/appointments";
+import OrdersPage from "../../pages/orders/Index.jsx";
+import UsersPage from "../../pages/users/Index.jsx";
+import AppointmentsPage from "../../pages/appointments/Index.jsx";
 
 
 function AppRoutes() {
