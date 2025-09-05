@@ -1,31 +1,37 @@
 import { Layout } from 'antd';
 
 import "./App.css";
-import AppHeader from './components/app-header/Index.jsx';
-import SideMenu from './components/side-menu/Index.jsx';
-import PageContent from './components/page-content/Index.jsx';
-import AppFooter from './components/app-footer/Index.jsx';
+import AppHeader from './components/app-header/index.jsx';
+import SideMenu from './components/side-menu/index.jsx';
+import PageContent from './components/page-content/index.jsx';
+import AppFooter from './components/app-footer/index.jsx';
 import { BrowserRouter } from 'react-router-dom';
-import AppRoutes from './components/app-routes/Index.jsx';
+import AppRoutes from './components/app-routes/index.jsx';
 
-const { Sider, Content } = Layout;
+const { Header, Sider, Content, Footer } = Layout;
 
 function App() {
   return (
   <div className="App">
     <BrowserRouter>
-      <AppHeader />
-      <Layout>
-        <Sider>
-          <SideMenu />
-        </Sider>
-        <Content>
-          <PageContent>
-            <AppRoutes />
-          </PageContent>
-        </Content>
+      <Layout style={{ minHeight: '100vh' }}>
+        <Header style={{ padding: 0, height: 'auto', lineHeight: 'normal', background: 'transparent' }}>
+          <AppHeader />
+        </Header>
+        <Layout>
+          <Sider width={250} theme="light" style={{ background: '#fff' }}>
+            <SideMenu />
+          </Sider>
+          <Content style={{ padding: '0 24px', minHeight: 280 }}>
+            <PageContent>
+              <AppRoutes />
+            </PageContent>
+          </Content>
+        </Layout>
+        <Footer style={{ textAlign: 'center', padding: '10px 50px' }}>
+          <AppFooter />
+        </Footer>
       </Layout>
-      <AppFooter />
     </BrowserRouter>
   </div>
   );
