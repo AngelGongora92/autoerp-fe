@@ -1,12 +1,12 @@
 import { Space } from 'antd';
 
 import "./App.css";
-import AppHeader from './components/app-header';
-import SideMenu from './components/side-menu';
-import PageContent from './components/page-content';
-import AppFooter from './components/app-footer';
+import AppHeader from './components/app-header/Index.jsx';
+import SideMenu from './components/side-menu/Index.jsx';
+import PageContent from './components/page-content/Index.jsx';
+import AppFooter from './components/app-footer/Index.jsx';
 import { BrowserRouter } from 'react-router-dom';
-import AppRoutes from './components/app-routes/Index';
+import AppRoutes from './components/app-routes/Index.jsx';
 
 
 function App() {
