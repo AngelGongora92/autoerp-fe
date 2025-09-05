@@ -1,9 +1,10 @@
+import AppRoutes from "../app-routes/Index";
+
 function PageContent() {
   return (
-    <main className="PageContent">
-      <h2>Welcome to AutoERP</h2>
-      <p>Your one-stop solution for all your ERP needs.</p>
-    </main>
+    <div className="PageContent">
+      <AppRoutes />
+    </div>
   );
 }
 
