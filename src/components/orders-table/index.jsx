@@ -1,8 +1,10 @@
+// Tu componente ahora es mucho más legible
 import React, { useState, useMemo } from 'react';
 import { Table, Tag, Spin, Button, Space, Input } from 'antd';
 import CreateUserModal from '../create-user-modal';
 import EditUserModal from '../edit-user-modal';
-import { useUsers } from '../../hooks/use-users'; // This line is correct
+import { useUsers } from '../../hooks/use-users';
+import { Link } from 'react-router-dom';
 
 // ✅ Las columnas se pueden definir fuera del componente si no dependen de su estado o props
 const columnsConfig = (handleEdit, handleDelete) => [
@@ -23,8 +25,7 @@ const columnsConfig = (handleEdit, handleDelete) => [
     )},
 ];
 
-// ⚠️ Corregí el nombre del componente para que coincida con lo que muestra
-function UsersTable() {
+function OrdersTable() {
   // Obtenemos todo lo que necesitamos del hook, incluyendo las nuevas funciones para editar
   const {
     users,
@@ -67,9 +68,11 @@ function UsersTable() {
           onChange={e => setSearchText(e.target.value)}
           style={{ width: 240 }}
         />
+        <Link to="/new-order">
         <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
-          Nuevo Usuario
+          Nueva Orden
         </Button>
+        </Link>
       </div>
 
       <Table 
@@ -80,14 +83,7 @@ function UsersTable() {
         pagination={{ pageSize: 5, position: ['bottomCenter'] }}
       />
       
-      <CreateUserModal
-        open={isCreateModalOpen}
-        onCreate={async (values) => {
-          await createUser(values);
-          setIsCreateModalOpen(false);
-        }}
-        onCancel={() => setIsCreateModalOpen(false)}
-      />
+      
 
       {/* Agregamos el modal de edición */}
       <EditUserModal
@@ -105,4 +101,4 @@ function UsersTable() {
   );
 }
 
-export default UsersTable;
+export default OrdersTable;

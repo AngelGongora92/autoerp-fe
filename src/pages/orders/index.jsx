@@ -1,7 +1,13 @@
-
+import OrdersTable from "../../components/orders-table";
 
 function OrdersPage(){
-    return <h1>Orders</h1>
+    return (
+        <div>
+            <OrdersTable
+            align = "center"
+            />
+        </div>
+    )
 }
 
 export default OrdersPage;
