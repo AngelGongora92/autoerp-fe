@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Tag, Spin, Button, Space, Input, Modal, message } from 'antd';
+import CreateUserModal from '../create-user-modal'; // Asumiendo que CreateUserModal está en un archivo separado
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -10,7 +11,6 @@ function UsersTable() {
   const [searchText, setSearchText] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // PASO 1: Llama al hook de Ant Design para obtener la instancia del modal y el contextHolder
   const [modal, contextHolder] = Modal.useModal();
 
   const handleEdit = (record) => {
@@ -19,7 +19,6 @@ function UsersTable() {
   };
 
   const handleDelete = (record) => {
-    // PASO 3: Usa la instancia 'modal' (en minúscula) en lugar del 'Modal' global
     modal.confirm({
       title: '¿Estás seguro de que quieres eliminar este usuario?',
       content: `Estás a punto de eliminar a "${record.username}". Esta acción no se puede deshacer.`,
@@ -41,7 +40,7 @@ function UsersTable() {
           message.success(`Usuario "${record.username}" eliminado con éxito.`);
         } catch (err) {
           console.error("Error al eliminar el usuario:", err);
-          modal.error({ // También se actualiza aquí para consistencia
+          modal.error({
             title: 'Error al eliminar',
             content: err.message,
           });
@@ -54,12 +53,38 @@ function UsersTable() {
     setIsModalOpen(true);
   };
 
-  const handleOk = () => {
-    setIsModalOpen(false);
-  };
-
   const handleCancel = () => {
     setIsModalOpen(false);
+  };
+  
+  // FUNCIÓN AÑADIDA
+  const handleCreate = async (values) => {
+    console.log('Creando nuevo usuario con:', values);
+    
+    try {
+      const response = await fetch(`${apiUrl}/users/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(values), 
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Error al crear el usuario.' }));
+        throw new Error(errorData.detail || 'No se pudo crear el usuario.');
+      }
+
+      const newUser = await response.json();
+
+      setUsers(prevUsers => [...prevUsers, newUser]);
+      message.success(`Usuario "${newUser.username}" creado con éxito.`);
+      
+      setIsModalOpen(false); 
+    } catch (err) {
+      console.error("Error al crear usuario:", err);
+      message.error(err.message);
+    }
   };
 
   const columns = [
@@ -139,7 +164,6 @@ function UsersTable() {
 
   return (
     <div style={{ padding: '10px' }}>
-      {/* PASO 2: Renderiza el contextHolder invisible. Es crucial para que el modal funcione. */}
       {contextHolder}
       
       <h2>Usuarios</h2>
@@ -156,18 +180,17 @@ function UsersTable() {
       </div>
 
       <Table 
-        size="big"
+        size="middle"
         columns={columns}
         dataSource={filteredUsers}
         rowKey="id"
         pagination={{ pageSize: 5, position: ['bottomCenter'] }}
       />
-      <Modal title="Crear Nuevo Usuario" open={isModalOpen} onOk={handleOk} onCancel={handleCancel} footer={[
-        <Button key="back" onClick={handleCancel}>Cancelar</Button>,
-        <Button key="submit" type="primary" onClick={handleOk}>Guardar</Button>,
-      ]}>
-        <p>Aquí irá el formulario para crear un nuevo usuario.</p>
-      </Modal>
+      <CreateUserModal
+        open={isModalOpen}
+        onCreate={handleCreate}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }
