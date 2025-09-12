@@ -19,7 +19,7 @@ function App() {
           <AppHeader />
         </Header>
         <Layout>
-          <Sider width={250} theme="light" style={{ background: '#fff' }}>
+          <Sider width={160} theme="light" style={{ background: '#fff' }}>
             <SideMenu />
           </Sider>
           <Content style={{ margin: 'auto' }}>

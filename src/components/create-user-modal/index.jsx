@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Form, Input, Checkbox } from 'antd'; // Checkbox.Group no es necesario aquí
+import { Modal, Form, Input, Checkbox } from 'antd';
 
 function CreateUserModal({ open, onCreate, onCancel }) {
   const [form] = Form.useForm();
@@ -15,8 +15,19 @@ function CreateUserModal({ open, onCreate, onCancel }) {
         form
           .validateFields()
           .then((values) => {
+            // --- AQUÍ ESTÁ EL CAMBIO ---
+
+            // 1. Prepara los datos finales que se enviarán
+            const finalValues = { ...values };
+
+            // 2. Si hay permisos (es decir, no es admin), transfórmalos
+            if (finalValues.permissions) {
+              finalValues.permissions = finalValues.permissions.map(name => ({ name: name }));
+            }
+            
             form.resetFields();
-            onCreate(values);
+            // 3. Envía los datos ya transformados al componente padre
+            onCreate(finalValues);
           })
           .catch((info) => {
             console.log('Error de validación:', info);
@@ -51,24 +62,26 @@ function CreateUserModal({ open, onCreate, onCancel }) {
           <Checkbox>Administrador</Checkbox>
         </Form.Item>
 
-        {/* --- CÓDIGO CORREGIDO PARA LA LÓGICA CONDICIONAL --- */}
-        
-        {/* 1. Este Form.Item "observa" los cambios en 'is_admin' */}
         <Form.Item
           noStyle
           dependencies={['is_admin']}
         >
-          {/* 2. Esta función se ejecuta cada vez que 'is_admin' cambia */}
           {() =>
-            // 3. Si 'is_admin' NO está marcado, se muestra el campo de permisos
             !form.getFieldValue('is_admin') && (
               <Form.Item
                 name="permissions"
                 label="Permisos"
-                // La validación solo se aplica si el campo es visible
-                rules={[{ required: true, message: 'Por favor, seleccione al menos un permiso' }]}
+                rules={[
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!getFieldValue('is_admin') && (!value || value.length === 0)) {
+                        return Promise.reject(new Error('Por favor, seleccione al menos un permiso'));
+                      }
+                      return Promise.resolve();
+                    },
+                  }),
+                ]}
               >
-                {/* Antd recomienda usar Checkbox.Group para manejar múltiples checkboxes */}
                 <Checkbox.Group>
                   <Checkbox value="servicio">Servicio</Checkbox>
                   <Checkbox value="page2">Page 2</Checkbox>
@@ -87,4 +100,3 @@ function CreateUserModal({ open, onCreate, onCancel }) {
 }
 
 export default CreateUserModal;
-        
