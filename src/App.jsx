@@ -22,7 +22,7 @@ function App() {
           <Sider width={250} theme="light" style={{ background: '#fff' }}>
             <SideMenu />
           </Sider>
-          <Content style={{ padding: '0 24px', minHeight: 280 }}>
+          <Content style={{ margin: 'auto' }}>
             <PageContent>
               <AppRoutes />
             </PageContent>
