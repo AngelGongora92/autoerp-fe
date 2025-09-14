@@ -56,7 +56,7 @@ function StepOne() {
           <Form.Item label="Cliente">
             <AutoComplete
               options={options}
-              style={{ width: '100%' }}
+              style={{ width: '50%' }}
               onSelect={onSelect}
               // Directamente pasas la función de búsqueda
               onSearch={searchCustomers}
@@ -80,15 +80,18 @@ function StepOne() {
           <Form.Item label="Contacto">
             <AutoComplete
               options={options}
-              style={{ width: '100%' }}
+              style={{ width: '50%' }}
               onSelect={onSelect}
               // Directamente pasas la función de búsqueda
               onSearch={searchCustomers}
               onChange={onChange}
               placeholder="Escribe para buscar un cliente..."
               // Y aquí está la magia. Ant Design se encarga del debounce.
+              
               debounce={300}
+              
               notFoundContent={loading ? <Spin size="small" /> : null}
+              
             />
           </Form.Item>
         </Col>
