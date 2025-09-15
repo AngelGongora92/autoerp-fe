@@ -23,7 +23,7 @@ const columnsConfig = (handleEdit, handleDelete) => [
     )},
 ];
 
-// ⚠️ Corregí el nombre del componente para que coincida con lo que muestra
+
 function UsersTable() {
   // Obtenemos todo lo que necesitamos del hook, incluyendo las nuevas funciones para editar
   const {
