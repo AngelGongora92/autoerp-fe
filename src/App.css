@@ -13,6 +13,27 @@
   align-items: center;
   padding: 10px 30px 4px 20px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+  background-color: #fff; /* Añadimos el fondo blanco aquí para que sea consistente */
+}
+
+/* Estilos para los elementos específicos del Header */
+.AppHeader-menu-button {
+  font-size: 16px;
+}
+
+.AppHeader-logo-icon {
+  font-size: 24px;
+  color: black;
+}
+
+.AppHeader-title {
+  margin: 0 !important; /* Sobreescribimos el margen por defecto de Typography.Title */
+  color: black;
+}
+
+.AppHeader-right-icons .anticon {
+  font-size: 24px;
+  color: black;
 }
 
 .SideMenu {
@@ -42,4 +63,3 @@
   border-top: 1px solid rgba(0, 0, 0, 0.15);
   color: black;
 }
-
