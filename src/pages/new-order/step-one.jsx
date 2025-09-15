@@ -70,8 +70,11 @@ function StepOne() {
     }
   };
 
-  const onContactSelect = (value, option) => {
-    setSelectedContact(option);
+  const onContactSelect = (value) => {
+    // Buscamos el objeto completo del contacto en nuestras opciones usando el ID (value)
+    // para asegurarnos de que tenemos todos los datos correctos.
+    const contact = contactOptions.find(opt => opt.value === value);
+    setSelectedContact(contact);
   };
 
   const onContactChange = (value) => {
@@ -161,7 +164,7 @@ function StepOne() {
 
     // El payload debe incluir el ID del cliente.
     // Usualmente, Django REST Framework espera el nombre del campo (ej: 'customer') en lugar de 'customer_id'.
-    const payload = { ...values, customer: selectedCustomer.id };
+    const payload = { ...values, customer_id: selectedCustomer.id };
 
     try {
       const response = await fetch(`${apiUrl}/contacts/`, {
@@ -214,7 +217,7 @@ function StepOne() {
             />
           </Form.Item>
 
-          <Form.Item label="Cliente">
+          <Form.Item label="Cliente" name="customer">
             <Space.Compact style={{ width: '50%' }}>
               <AutoComplete
                 style={{ width: '100%' }}
