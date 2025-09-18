@@ -17,7 +17,6 @@ const StepOne = forwardRef((props, ref) => {
   // Estados para los contactos
   const [contactOptions, setContactOptions] = useState([]);
   const [contactLoading, setContactLoading] = useState(false);
-  const [selectedContact, setSelectedContact] = useState(null);
   
   // Estados para los asesores
   const [advisorOptions, setAdvisorOptions] = useState([]);
@@ -44,6 +43,9 @@ const StepOne = forwardRef((props, ref) => {
           label: `${advisor.fname || ''} ${advisor.lname1 || ''}`.trim(),
         }));
         setAdvisorOptions(formattedOptions);
+        if (formattedOptions.length > 0) {
+          form.setFieldsValue({ advisor: formattedOptions[0].value });
+        }
       } catch (error) {
         console.error("Error fetching advisors:", error);
         message.error('No se pudieron cargar los asesores.');
@@ -67,6 +69,9 @@ const StepOne = forwardRef((props, ref) => {
           label: `${tech.fname || ''} ${tech.lname1 || ''}`.trim(),
         }));
         setTechnicianOptions(formattedOptions);
+        if (formattedOptions.length > 0) {
+          form.setFieldsValue({ technician: formattedOptions[0].value });
+        }
       } catch (error) {
         console.error("Error fetching technicians:", error);
         message.error('No se pudieron cargar los técnicos.');
@@ -108,29 +113,13 @@ const StepOne = forwardRef((props, ref) => {
 
   const onCustomerSelect = (value, option) => {
     setSelectedCustomer(option);
-    // Limpiamos el campo de contacto cuando se selecciona un nuevo cliente
     form.setFieldsValue({ contact: undefined });
-    setSelectedContact(null);
   };
   
   const onCustomerChange = (value) => {
     if (!value) {
       setSelectedCustomer(null);
-      // Limpiamos las opciones de contacto si se deselecciona el cliente
       setContactOptions([]);
-      setSelectedContact(null);
-    }
-  };
-
-  const handleContactChange = (value, option) => {
-    // Forzamos la actualización del valor en el formulario de manera explícita.
-    // Esto hace que el flujo de "seleccionar" se comporte igual que el de "crear",
-    // que ya sabemos que funciona correctamente.
-    form.setFieldsValue({ contact: value });
-    if (value) {
-      setSelectedContact(option);
-    } else {
-      setSelectedContact(null);
     }
   };
 
@@ -228,10 +217,7 @@ const StepOne = forwardRef((props, ref) => {
       const fullName = `${newContact.fname || ''} ${newContact.lname || ''}`.trim();
       const formattedNewContact = { ...newContact, value: newContact.contact_id, label: fullName };
 
-      // Actualiza el formulario para seleccionar el nuevo contacto
       form.setFieldsValue({ contact: formattedNewContact.value });
-      setSelectedContact(formattedNewContact);
-      // Añade el nuevo contacto a las opciones y lo selecciona
       setContactOptions([formattedNewContact, ...contactOptions]);
 
       setIsContactModalOpen(false);
@@ -278,6 +264,8 @@ const StepOne = forwardRef((props, ref) => {
       }
 
       const newOrder = await response.json();
+      message.success(`Orden "${newOrder.c_order_id || 'N/A'}" creada con éxito.`);
+      console.log('Orden creada:', newOrder);
       return newOrder;
     } catch (errorInfo) {
       if (errorInfo.errorFields) {
@@ -285,7 +273,6 @@ const StepOne = forwardRef((props, ref) => {
         message.error('Por favor, complete todos los campos requeridos.');
       } else {
         console.error('Error al crear la orden:', errorInfo);
-        // El mensaje de error específico de la API ya se muestra, no es necesario repetirlo.
       }
       throw errorInfo;
     }
@@ -326,11 +313,7 @@ const StepOne = forwardRef((props, ref) => {
             />
           </Form.Item>
 
-          <Form.Item 
-            label="Cliente" 
-            name="customer"
-            rules={[{ required: true, message: 'Por favor, busque y seleccione un cliente' }]}
-          >
+          <Form.Item label="Cliente" name="customer">
             <Space.Compact style={{ width: '50%' }}>
               <AutoComplete
                 style={{ width: '100%' }}
@@ -359,7 +342,6 @@ const StepOne = forwardRef((props, ref) => {
           <Form.Item
             label="Folio"
             name="folio"
-            rules={[{ required: true, message: 'Por favor, ingrese el folio' }]}
           >
             <Input placeholder="Ingrese el folio" style={{ width: '50%' }} />
           </Form.Item>
@@ -395,17 +377,14 @@ const StepOne = forwardRef((props, ref) => {
                 placeholder={
                   !selectedCustomer ? "Seleccione un cliente primero" : "Seleccionar contacto"
                 }
-                onChange={handleContactChange}
                 allowClear
                 notFoundContent={contactLoading ? <Spin size="small" /> : 'Sin contactos'}
               />
-              <Button 
-                icon={<PlusOutlined />} 
-                disabled={!selectedCustomer} 
-                onClick={() => setIsContactModalOpen(true)} 
-              />
+              <Button icon={<PlusOutlined />} disabled={!selectedCustomer} onClick={() => setIsContactModalOpen(true)} />
             </Space.Compact>
           </Form.Item>
+          {/* Ya no se usa el estado local de contacto para renderizar la tarjeta */}
+          {/* Ahora el formulario de Ant Design es la fuente de la verdad para la selección */}
         </Col>
       </Row>
       
