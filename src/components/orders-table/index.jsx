@@ -1,101 +1,124 @@
-// Tu componente ahora es mucho más legible
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Table, Tag, Spin, Button, Space, Input } from 'antd';
-import CreateUserModal from '../create-user-modal';
-import EditUserModal from '../edit-user-modal';
-import { useUsers } from '../../hooks/use-users';
 import { Link } from 'react-router-dom';
+import dayjs from 'dayjs';
 
-// ✅ Las columnas se pueden definir fuera del componente si no dependen de su estado o props
-const columnsConfig = (handleEdit, handleDelete) => [
-    { title: 'Username', dataIndex: 'username', key: 'username', align: 'center', sorter: (a, b) => a.username.localeCompare(b.username) },
-    { title: 'Admin', dataIndex: 'is_admin', key: 'is_admin', align: 'center', render: (isAdmin) => <Tag color={isAdmin ? "blue" : "default"}>{isAdmin ? 'Sí' : 'No'}</Tag> },
-    { title: 'Permisos', key: 'permissions', dataIndex: 'permissions', align: 'center', render: (permissions) => (
-        <Space size={[0, 8]} wrap>
-          {permissions?.length > 0 ? (
-            permissions.map(p => <Tag color="geekblue" key={p.name}>{p.name.toUpperCase()}</Tag>)
-          ) : (<Tag>Sin permisos</Tag>)}
-        </Space>
-    )},
-    { title: 'Acciones', key: 'actions', align: 'center', render: (_, record) => (
-        <Space size="middle" wrap>
-          <Button type="primary" ghost onClick={() => handleEdit(record)}>Editar</Button>
-          <Button type="primary" danger ghost onClick={() => handleDelete(record)}>Eliminar</Button>
-        </Space>
-    )},
+const columnsConfig = () => [
+    { 
+        title: 'Folio', 
+        dataIndex: 'c_order_id', 
+        key: 'c_order_id', 
+        align: 'center', 
+        sorter: (a, b) => a.c_order_id.localeCompare(b.c_order_id) 
+    },
+    { 
+        title: 'Fecha', 
+        dataIndex: 'order_date', 
+        key: 'order_date', 
+        align: 'center', 
+        render: (date) => dayjs(date).format('YYYY-MM-DD'),
+        sorter: (a, b) => dayjs(a.order_date).unix() - dayjs(b.order_date).unix()
+    },
+    { 
+        title: 'Cliente ID', 
+        dataIndex: 'customer_id', 
+        key: 'customer_id', 
+        align: 'center' 
+    },
+    { 
+        title: 'Asesor ID', 
+        dataIndex: 'advisor_id', 
+        key: 'advisor_id', 
+        align: 'center' 
+    },
+    { 
+        title: 'Técnico ID', 
+        dataIndex: 'mechanic_id', 
+        key: 'mechanic_id', 
+        align: 'center' 
+    },
+    { 
+        title: 'Estatus Op.', 
+        dataIndex: 'op_status_id', 
+        key: 'op_status_id', 
+        align: 'center',
+        render: (status) => status ? <Tag color="processing">{`Estatus ${status}`}</Tag> : <Tag>N/A</Tag>
+    },
+    { 
+        title: 'Acciones', 
+        key: 'actions', 
+        align: 'center', 
+        render: (_, record) => (
+            <Space size="middle" wrap>
+              <Button type="primary" ghost onClick={() => console.log('Edit order', record.order_id)}>Ver / Editar</Button>
+            </Space>
+        )
+    },
 ];
 
 function OrdersTable() {
-  // Obtenemos todo lo que necesitamos del hook, incluyendo las nuevas funciones para editar
-  const {
-    users,
-    loading,
-    error,
-    createUser,
-    deleteUser,
-    contextHolder,
-    editingUser,
-    isEditModalOpen,
-    handleEdit,
-    handleCancelEdit,
-    updateUser,
-  } = useUsers();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const apiUrl = import.meta.env.VITE_API_URL;
   
   const [searchText, setSearchText] = useState('');
-  // Renombramos el estado para mayor claridad
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
-  // Creamos las columnas, pasando las funciones de manejo del hook
-  const columns = useMemo(() => columnsConfig(handleEdit, deleteUser), [handleEdit, deleteUser]);
+  useEffect(() => {
+    const fetchOrders = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await fetch(`${apiUrl}/orders/`);
+            if (!response.ok) {
+                throw new Error('No se pudieron cargar las órdenes');
+            }
+            const data = await response.json();
+            setOrders(data);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const filteredUsers = useMemo(() => 
-    users.filter(user =>
-      user.username.toLowerCase().includes(searchText.toLowerCase())
-  ), [users, searchText]);
+    fetchOrders();
+  }, [apiUrl]);
 
-  if (error) return <div>Error al cargar los datos: {error}</div>;
-  if (loading) return <Spin tip="Cargando usuarios..." size="large" fullscreen />;
+  const columns = useMemo(() => columnsConfig(), []);
+
+  const filteredOrders = useMemo(() => 
+    orders.filter(order =>
+      order.c_order_id && order.c_order_id.toLowerCase().includes(searchText.toLowerCase())
+  ), [orders, searchText]);
+
+  if (error) return <div>Error al cargar los datos: {error.message}</div>;
+  if (loading) return <Spin tip="Cargando órdenes..." size="large" fullscreen />;
 
   return (
     <div style={{ padding: '10px' }}>
-      {contextHolder}
       
-      <h2>Usuarios</h2>
+      <h2>Órdenes de Servicio</h2>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <Input
-          placeholder="Buscar por nombre de usuario..."
+          placeholder="Buscar por folio..."
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
           style={{ width: 240 }}
         />
         <Link to="/new-order">
-        <Button type="primary" onClick={() => setIsCreateModalOpen(true)}>
-          Nueva Orden
-        </Button>
+          <Button type="primary">
+            Nueva Orden
+          </Button>
         </Link>
       </div>
 
       <Table 
         size="middle"
         columns={columns}
-        dataSource={filteredUsers}
-        rowKey="id"
-        pagination={{ pageSize: 5, position: ['bottomCenter'] }}
-      />
-      
-      
-
-      {/* Agregamos el modal de edición */}
-      <EditUserModal
-        open={isEditModalOpen}
-        initialData={editingUser}
-        onUpdate={async (values) => {
-          if (editingUser) {
-            await updateUser(editingUser.id, values);
-          }
-          handleCancelEdit(); // Cierra el modal
-        }}
-        onCancel={handleCancelEdit}
+        dataSource={filteredOrders}
+        rowKey="order_id"
+        pagination={{ pageSize: 10, position: ['bottomCenter'] }}
       />
     </div>
   );
