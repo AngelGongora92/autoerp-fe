@@ -134,6 +134,31 @@ const StepOne = forwardRef((props, ref) => {
     }
   };
 
+  const validateFolio = async (_, value) => {
+    // No es necesario validar si el campo está vacío, la regla `required` se encargará.
+    if (!value) {
+      return Promise.resolve();
+    }
+    try {
+      // Asumimos un endpoint que verifica la existencia del folio.
+      // Debería devolver 200/OK si existe, y 404 si no.
+      const response = await fetch(`${apiUrl}/orders/customId/${value}`);
+      if (response.ok) {
+        // El backend encontró un folio coincidente.
+        return Promise.reject(new Error('Este folio ya existe en la base de datos.'));
+      }
+      if (response.status === 404) {
+        // El folio es único.
+        return Promise.resolve();
+      }
+      // Para otros errores HTTP (como 500), informamos al usuario.
+      return Promise.reject(new Error('No se pudo validar el folio en el servidor.'));
+    } catch (error) {
+      console.error("Error al validar folio:", error);
+      return Promise.reject(new Error('Error de red al validar el folio.'));
+    }
+  };
+
   // useEffect para buscar contactos cuando se selecciona un cliente
   useEffect(() => {
     const fetchContacts = async (customerId) => {
@@ -359,9 +384,12 @@ const StepOne = forwardRef((props, ref) => {
           <Form.Item
             label="Folio"
             name="folio"
-            rules={[{ required: true, message: 'Por favor, ingrese el folio' }]}
+            rules={[
+              { required: true, message: 'Por favor, ingrese el folio' },
+              { validator: validateFolio, validateTrigger: 'onBlur' }
+            ]}
           >
-            <Input placeholder="Ingrese el folio" style={{ width: '50%' }} />
+            <Input placeholder="Ingrese el folio" style={{ width: '50%' }} allowClear />
           </Form.Item>
 
           <Form.Item
@@ -406,6 +434,13 @@ const StepOne = forwardRef((props, ref) => {
               />
             </Space.Compact>
           </Form.Item>
+          {selectedContact && (
+            <Card title="Información del Contacto" bordered={false} style={{ marginTop: 16, backgroundColor: '#FAFAFA', width: '50%' }}>
+              <p><Text strong>Nombre:</Text> {selectedContact.label || 'N/A'}</p>
+              <p><Text strong>Email:</Text> {selectedContact.email || 'N/A'}</p>
+              <p><Text strong>Teléfono:</Text> {selectedContact.phone || 'N/A'}</p>
+            </Card>
+          )}
         </Col>
       </Row>
       

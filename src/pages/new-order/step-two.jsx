@@ -1,30 +1,217 @@
-import React from 'react';
-import { Form, Select, Button, Space } from 'antd';
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { Form, Select, Button, Space, Spin, message, Row, Col, Card, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import CreateVehicleModal from '../../components/create-vehicle-modal';
 
-function StepTwo({ orderData }) {
+const { Text } = Typography;
+
+const StepTwo = forwardRef(({ orderData }, ref) => {
+  const [form] = Form.useForm();
+  const [vehicleOptions, setVehicleOptions] = useState([]);
+  const [vehicleLoading, setVehicleLoading] = useState(false);
+  const [selectedCustomerInfo, setSelectedCustomerInfo] = useState(null);
+  const [selectedVehicleInfo, setSelectedVehicleInfo] = useState(null);
+  const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
+  const apiUrl = import.meta.env.VITE_API_URL;
+
+  const fetchVehicles = useCallback(async (customerId) => {
+    if (!customerId) return;
+    setVehicleLoading(true);
+    try {
+      const response = await fetch(`${apiUrl}/vehicles/${customerId}`);
+      if (!response.ok) throw new Error('Error al cargar vehículos');
+      const data = await response.json();
+      const formattedOptions = data.map(vehicle => ({
+        ...vehicle,
+        value: vehicle.vehicle_id,
+        label: `${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''} - ${vehicle.vin ? `VIN:${vehicle.vin.slice(-6)}` : 'S/N'}`.trim(),
+      }));
+      setVehicleOptions(formattedOptions);
+      return formattedOptions;
+    } catch (error) {
+      console.error("Error fetching vehicles:", error);
+      message.error('No se pudieron cargar los vehículos del cliente.');
+    } finally {
+      setVehicleLoading(false);
+    }
+  }, [apiUrl]);
+
+  useEffect(() => {
+    if (orderData?.customer_id) {
+      const fetchCustomerInfo = async (customerId) => {
+        try {
+          const response = await fetch(`${apiUrl}/customers/${customerId}`);
+          if (!response.ok) throw new Error('Error al cargar información del cliente');
+          const data = await response.json();
+          setSelectedCustomerInfo(data);
+        } catch (error) {
+          console.error("Error fetching customer info:", error);
+          message.error('No se pudo cargar la información del cliente.');
+        }
+      };
+      fetchCustomerInfo(orderData.customer_id);
+      fetchVehicles(orderData.customer_id);
+    }
+  }, [orderData, fetchVehicles]);
+
+  useEffect(() => {
+    if (orderData?.vehicle_id && vehicleOptions.length > 0) {
+      form.setFieldsValue({ vehicle: orderData.vehicle_id });
+      const previouslySelectedVehicle = vehicleOptions.find(
+        (option) => option.value === orderData.vehicle_id
+      );
+      if (previouslySelectedVehicle) {
+        setSelectedVehicleInfo(previouslySelectedVehicle);
+      }
+    }
+  }, [orderData, vehicleOptions, form]);
+
+  const handleCreateVehicle = async (values) => {
+    try {
+      const response = await fetch(`${apiUrl}/vehicles/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+      if (!response.ok) throw new Error('No se pudo crear el vehículo');
+      const newVehicle = await response.json();
+      message.success('Vehículo creado con éxito!');
+      setIsVehicleModalOpen(false);
+      
+      // Refresh vehicle list and select the new one
+      const newOptions = await fetchVehicles(orderData.customer_id);
+      if (newOptions) {
+        const newOption = newOptions.find(opt => opt.value === newVehicle.vehicle_id);
+        if (newOption) {
+            form.setFieldsValue({ vehicle: newVehicle.vehicle_id });
+            setSelectedVehicleInfo(newOption);
+        }
+      }
+
+    } catch (error) {
+      message.error(error.message || 'Error al crear el vehículo.');
+      console.error('Failed to create vehicle:', error);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    submitStep: async () => {
+      try {
+        const values = await form.validateFields();
+        const payload = { vehicle_id: values.vehicle };
+        const response = await fetch(`${apiUrl}/orders/${orderData.order_id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'No se pudo actualizar la orden con el vehículo.');
+        }
+        return await response.json();
+      } catch (errorInfo) {
+        if (errorInfo.errorFields) {
+          message.error('Por favor, seleccione un vehículo.');
+        } else {
+          message.error(errorInfo.message || 'Ocurrió un error al guardar el vehículo.');
+        }
+        throw errorInfo;
+      }
+    }
+  }));
+
+  const getPlaceholder = () => {
+    if (vehicleLoading) return "Cargando vehículos...";
+    return vehicleOptions.length === 0 ? "Agregar vehiculos" : "Seleccionar vehiculo";
+  };
+
+  const onVehicleSelect = (value, option) => {
+    setSelectedVehicleInfo(option);
+    form.setFieldsValue({ vehicle: value });
+  };
+
+  const onVehicleChange = (value) => {
+    if (!value) {
+      setSelectedVehicleInfo(null);
+    }
+  };
+
   return (
     <div>
-      
-      {/* Aquí van los campos del formulario para la información del vehículo */}
-      {orderData && <p>Continuando con la orden: {orderData.order_id}</p>}
+      <Row justify="center" align="top" style={{ marginBottom: '24px' }}>
+        <Col span={24}>
+          <p style={{ margin: 0, textAlign: 'center' }}>
+            <Text strong>Orden:</Text> {orderData?.c_order_id || 'N/A'}
+            <span style={{ margin: '0 16px' }}>|</span>
+            <Text strong>Cliente:</Text> 
+            {selectedCustomerInfo ? 
+            (selectedCustomerInfo.is_company ? 
+            selectedCustomerInfo.cname : `${selectedCustomerInfo.fname || ''} ${selectedCustomerInfo.lname || ''}`.trim()) : 'Cargando...'}
+          </p>
+        </Col>
+      </Row>
 
-      <Form layout="vertical" style={{ lineHeight: 'normal', textAlign: 'left', marginTop: 24 }}>
-        <Form.Item
-          label="Vehículo"
-          name="vehicle"
-        >
-          <Space.Compact style={{ width: '50%' }}>
-            <Select
-              style={{ width: '100%' }}
-              placeholder="Seleccionar vehículo"
-            />
-            <Button icon={<PlusOutlined />} />
-          </Space.Compact>
-        </Form.Item>
-      </Form>
+      <Row gutter={24}>
+        <Col span={12}>
+          <Form form={form} >
+            <Form.Item
+              label="Vehículo"
+              name="vehicle"
+              rules={[{ required: true, message: 'Por favor, seleccione un vehículo' }]}
+            >
+              <Space.Compact style={{ width: '70%' }}>
+                <Select
+                  style={{ width: '100%' }}
+                  loading={vehicleLoading}
+                  options={vehicleOptions}
+                  disabled={!orderData || vehicleLoading}
+                  placeholder={getPlaceholder()}
+                  notFoundContent={vehicleLoading ? <Spin size="small" /> : null}
+                  onSelect={onVehicleSelect}
+                  onChange={onVehicleChange}
+                  allowClear
+                />
+                <Button icon={<PlusOutlined />} disabled={!orderData} onClick={() => setIsVehicleModalOpen(true)} />
+              </Space.Compact>
+            </Form.Item>
+            
+            {selectedVehicleInfo && (
+              <Card title="Información del Vehículo" bordered={false} style={{ marginTop: 16, backgroundColor: '#FAFAFA' }}>
+                <Row gutter={16}>
+                  <Col span={12}>
+                  <p><Text strong>Marca:</Text> {selectedVehicleInfo.make || 'N/A'}</p>
+                  <p><Text strong>Modelo:</Text> {selectedVehicleInfo.model || 'N/A'}</p>
+                  <p><Text strong>Año:</Text> {selectedVehicleInfo.year || 'N/A'}</p>
+                  <p><Text strong>VIN:</Text> {selectedVehicleInfo.vin || 'N/A'}</p>
+                  <p><Text strong>Placas:</Text> {selectedVehicleInfo.plate || 'N/A'}</p>
+                  <p><Text strong>KM:</Text> {selectedVehicleInfo.mileage || 'N/A'}</p>
+                  <p><Text strong>Tipo:</Text> {selectedVehicleInfo.vehicle_type.type || 'N/A'}</p>
+                  </Col>
+                  <Col span={12}>
+                  <p><Text strong>Color:</Text> {selectedVehicleInfo.color.color || 'N/A'}</p>
+                  <p><Text strong>Motor:</Text> {selectedVehicleInfo.motor.type || 'N/A'}</p>
+                  <p><Text strong>Tranmisión:</Text> {selectedVehicleInfo.transmission || 'N/A'}</p>
+                  <p><Text strong>Cilindros:</Text> {selectedVehicleInfo.cylinders || 'N/A'}</p>
+                  <p><Text strong>Litros:</Text> {selectedVehicleInfo.liters || 'N/A'}</p>
+                  <p><Text strong>Flotilla:</Text> {selectedVehicleInfo.fleet_number || 'N/A'}</p>
+                  </Col>
+                </Row>
+              </Card>
+            )}
+          </Form>
+        </Col>
+        <Col span={12}>
+          {/* Columna izquierda, actualmente vacía según la solicitud */}
+        </Col>
+      </Row>
+      <CreateVehicleModal
+        open={isVehicleModalOpen}
+        onCreate={handleCreateVehicle}
+        onCancel={() => setIsVehicleModalOpen(false)}
+        customerId={orderData?.customer_id}
+      />
     </div>
   );
-}
+});
 
 export default StepTwo;

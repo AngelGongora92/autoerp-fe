@@ -4,11 +4,14 @@ import { Link } from 'react-router-dom';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import StepOne from './step-one.jsx';
 import StepTwo from './step-two.jsx';
+import StepThree from './step-three.jsx';
+
+
 
 const steps = [
   { title: 'Cliente' },
   { title: 'Vehiculo' },
-  { title: 'Envío y Entrega' },
+  { title: 'Inventarios' },
   { title: 'Revisión y Pago' },
 ];
 
@@ -16,7 +19,8 @@ const NewOrderPage = () => {
   const [current, setCurrent] = useState(0);
   const [loading, setLoading] = useState(false);
   const [orderData, setOrderData] = useState(null); // Estado para guardar la orden
-  const stepOneRef = useRef(null); // 👈 Creamos la referencia al componente hijo
+  const stepOneRef = useRef(null);
+  const stepTwoRef = useRef(null); // Referencia para el Paso 2
 
   const next = async () => {
     // Si estamos en el primer paso, validamos el formulario del StepOne
@@ -31,6 +35,18 @@ const NewOrderPage = () => {
       } catch (error) {
         console.error('La validación del formulario falló:', error);
         // Los mensajes de error ya son manejados por AntD en el componente hijo
+      } finally {
+        setLoading(false);
+      }
+    } else if (current === 1) {
+      setLoading(true);
+      try {
+        const updatedOrder = await stepTwoRef.current.submitStep();
+        setOrderData(updatedOrder); // Actualizamos la orden con el vehículo
+        message.success('Paso 2 completado. Avanzando...');
+        setCurrent(2);
+      } catch (error) {
+        console.error('Fallo en el paso 2:', error);
       } finally {
         setLoading(false);
       }
@@ -49,8 +65,6 @@ const NewOrderPage = () => {
   }));
 
   const contentStyle = {
-    lineHeight: '260px',
-    textAlign: 'center',
     color: '#333',
     backgroundColor: '#fafafa',
     borderRadius: '8px',
@@ -74,7 +88,7 @@ const NewOrderPage = () => {
 
       <div style={contentStyle}>
         {current === 0 && <StepOne ref={stepOneRef} />}
-        {current === 1 && <StepTwo orderData={orderData} />}
+        {current === 1 && <StepTwo ref={stepTwoRef} orderData={orderData} />}
         {current === 2 && <h2>Paso 3: Dirección de Envío</h2>}
         {current === 3 && <h2>Paso 4: Resumen y Finalización</h2>}
       </div>
