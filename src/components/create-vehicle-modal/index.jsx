@@ -18,9 +18,9 @@ const CreateVehicleModal = ({ open, onCreate, onCancel, customerId }) => {
         setLoading(true);
         try {
           const [typesRes, colorsRes, motorsRes] = await Promise.all([
-            fetch(`${apiUrl}/vehicle-types/`),
-            fetch(`${apiUrl}/vehicle/colors/`),
-            fetch(`${apiUrl}/vehicle/motors/`),
+            fetch(`${apiUrl}/vehicles/types/`),
+            fetch(`${apiUrl}/vehicles/colors/`),
+            fetch(`${apiUrl}/vehicles/motors/`),
           ]);
 
           if (!typesRes.ok || !colorsRes.ok || !motorsRes.ok) {
@@ -100,9 +100,9 @@ const CreateVehicleModal = ({ open, onCreate, onCancel, customerId }) => {
                     </Form.Item>
                 </Col>
                 <Col span={12}>
-                    <Form.Item name="vehicle_type_id" label="Tipo de Vehículo" rules={[{ required: true, message: 'Por favor seleccione un tipo' }]}>
+                    <Form.Item name="v_type_id" label="Tipo de Vehículo" rules={[{ required: true, message: 'Por favor seleccione un tipo' }]}>
                         <Select placeholder="Seleccione un tipo">
-                        {vehicleTypes.map(type => <Option key={type.vehicle_type_id} value={type.vehicle_type_id}>{type.type}</Option>)}
+                        {vehicleTypes.map(type => <Option key={type.v_type_id} value={type.v_type_id}>{type.type}</Option>)}
                         </Select>
                     </Form.Item>
                     <Form.Item name="color_id" label="Color" rules={[{ required: true, message: 'Por favor seleccione un color' }]}>
