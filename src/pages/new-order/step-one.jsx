@@ -17,7 +17,6 @@ const StepOne = forwardRef((props, ref) => {
   // Estados para los contactos
   const [contactOptions, setContactOptions] = useState([]);
   const [contactLoading, setContactLoading] = useState(false);
-  const [selectedContact, setSelectedContact] = useState(null);
   
   // Estados para los asesores
   const [advisorOptions, setAdvisorOptions] = useState([]);
@@ -109,8 +108,7 @@ const StepOne = forwardRef((props, ref) => {
   const onCustomerSelect = (value, option) => {
     setSelectedCustomer(option);
     // Limpiamos el campo de contacto cuando se selecciona un nuevo cliente
-    form.setFieldsValue({ contact: undefined });
-    setSelectedContact(null);
+    form.setFieldsValue({ contact: null });
   };
   
   const onCustomerChange = (value) => {
@@ -118,20 +116,17 @@ const StepOne = forwardRef((props, ref) => {
       setSelectedCustomer(null);
       // Limpiamos las opciones de contacto si se deselecciona el cliente
       setContactOptions([]);
-      setSelectedContact(null);
+      form.setFieldsValue({ contact: null });
     }
   };
 
   const handleContactChange = (value, option) => {
-    // Forzamos la actualización del valor en el formulario de manera explícita.
-    // Esto hace que el flujo de "seleccionar" se comporte igual que el de "crear",
-    // que ya sabemos que funciona correctamente.
+    // Cuando el usuario selecciona un contacto, actualizamos el formulario.
+    // Antd Select pasa el `option` completo cuando se selecciona, o `undefined` cuando se limpia.
+    // No necesitamos gestionar un estado `selectedContact` separado,
+    // la información ya está en `option` o en `contactOptions`.
+    // La tarjeta de información del contacto se renderizará buscando en `contactOptions`.
     form.setFieldsValue({ contact: value });
-    if (value) {
-      setSelectedContact(option);
-    } else {
-      setSelectedContact(null);
-    }
   };
 
   const validateFolio = async (_, value) => {
@@ -216,9 +211,11 @@ const StepOne = forwardRef((props, ref) => {
         label: fullName,
       };
 
+      // 1. Actualizamos las opciones para que el nuevo cliente esté disponible.
+      setOptions([formattedNewCustomer, ...options]);
+      // 2. Ahora sí, establecemos el valor en el formulario y actualizamos el estado.
       form.setFieldsValue({ customer: fullName });
       setSelectedCustomer(formattedNewCustomer);
-      setOptions([formattedNewCustomer, ...options]);
 
       setIsCustomerModalOpen(false);
       message.success(`Cliente "${fullName}" creado y seleccionado.`);
@@ -253,11 +250,10 @@ const StepOne = forwardRef((props, ref) => {
       const fullName = `${newContact.fname || ''} ${newContact.lname || ''}`.trim();
       const formattedNewContact = { ...newContact, value: newContact.contact_id, label: fullName };
 
-      // Actualiza el formulario para seleccionar el nuevo contacto
-      form.setFieldsValue({ contact: formattedNewContact.value });
-      setSelectedContact(formattedNewContact);
-      // Añade el nuevo contacto a las opciones y lo selecciona
+      // 1. Actualizamos las opciones para que el nuevo contacto esté disponible.
       setContactOptions([formattedNewContact, ...contactOptions]);
+      // 2. Ahora sí, establecemos el valor en el formulario.
+      form.setFieldsValue({ contact: formattedNewContact.value });
 
       setIsContactModalOpen(false);
       message.success(`Contacto "${fullName}" creado y seleccionado.`);
@@ -266,6 +262,20 @@ const StepOne = forwardRef((props, ref) => {
       message.error(error.message || 'Ocurrió un error al crear el contacto.');
     }
   };
+
+  const openCreateCustomerModal = () => {
+    form.setFieldsValue({ customer: undefined });
+    onCustomerChange(undefined); // Reutilizamos la lógica de limpieza
+    setIsCustomerModalOpen(true);
+  };
+
+  const openCreateContactModal = () => {
+    form.setFieldsValue({ contact: null });
+    setIsContactModalOpen(true);
+  };
+
+  const selectedContactValue = Form.useWatch('contact', form);
+  const selectedContact = contactOptions.find(c => c.value === selectedContactValue);
 
   useImperativeHandle(ref, () => ({
     submitStep: async () => {
@@ -367,7 +377,7 @@ const StepOne = forwardRef((props, ref) => {
                 debounce={300}
                 notFoundContent={loading ? <Spin size="small" /> : null}
               />
-              <Button icon={<PlusOutlined />} onClick={() => setIsCustomerModalOpen(true)} />
+              <Button icon={<PlusOutlined />} onClick={openCreateCustomerModal} />
             </Space.Compact>
           </Form.Item>
           {selectedCustomer && (
@@ -430,11 +440,11 @@ const StepOne = forwardRef((props, ref) => {
               <Button 
                 icon={<PlusOutlined />} 
                 disabled={!selectedCustomer} 
-                onClick={() => setIsContactModalOpen(true)} 
+                onClick={openCreateContactModal} 
               />
             </Space.Compact>
           </Form.Item>
-          {selectedContact && (
+          {selectedContact && selectedContactValue && (
             <Card title="Información del Contacto" bordered={false} style={{ marginTop: 16, backgroundColor: '#FAFAFA', width: '50%' }}>
               <p><Text strong>Nombre:</Text> {selectedContact.label || 'N/A'}</p>
               <p><Text strong>Email:</Text> {selectedContact.email || 'N/A'}</p>
