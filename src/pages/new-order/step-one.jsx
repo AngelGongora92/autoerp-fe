@@ -10,6 +10,7 @@ const { Text } = Typography;
 const StepOne = forwardRef((props, ref) => {
   const [form] = Form.useForm();
   const [options, setOptions] = useState([]);
+  const [customerSearchValue, setCustomerSearchValue] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [loading, setLoading] = useState(false);
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -17,6 +18,7 @@ const StepOne = forwardRef((props, ref) => {
   // Estados para los contactos
   const [contactOptions, setContactOptions] = useState([]);
   const [contactLoading, setContactLoading] = useState(false);
+  const [contactValue, setContactValue] = useState(null);
   
   // Estados para los asesores
   const [advisorOptions, setAdvisorOptions] = useState([]);
@@ -106,16 +108,20 @@ const StepOne = forwardRef((props, ref) => {
   };
 
   const onCustomerSelect = (value, option) => {
+    setCustomerSearchValue(value);
     setSelectedCustomer(option);
+    setContactValue(null); // Limpiar contacto al cambiar de cliente
     // Limpiamos el campo de contacto cuando se selecciona un nuevo cliente
     form.setFieldsValue({ contact: null });
   };
   
   const onCustomerChange = (value) => {
+    setCustomerSearchValue(value);
     if (!value) {
       setSelectedCustomer(null);
       // Limpiamos las opciones de contacto si se deselecciona el cliente
       setContactOptions([]);
+      setContactValue(null);
       form.setFieldsValue({ contact: null });
     }
   };
@@ -126,6 +132,7 @@ const StepOne = forwardRef((props, ref) => {
     // No necesitamos gestionar un estado `selectedContact` separado,
     // la información ya está en `option` o en `contactOptions`.
     // La tarjeta de información del contacto se renderizará buscando en `contactOptions`.
+    setContactValue(value);
     form.setFieldsValue({ contact: value });
   };
 
@@ -215,6 +222,7 @@ const StepOne = forwardRef((props, ref) => {
       setOptions([formattedNewCustomer, ...options]);
       // 2. Ahora sí, establecemos el valor en el formulario y actualizamos el estado.
       form.setFieldsValue({ customer: fullName });
+      setCustomerSearchValue(fullName);
       setSelectedCustomer(formattedNewCustomer);
 
       setIsCustomerModalOpen(false);
@@ -253,6 +261,7 @@ const StepOne = forwardRef((props, ref) => {
       // 1. Actualizamos las opciones para que el nuevo contacto esté disponible.
       setContactOptions([formattedNewContact, ...contactOptions]);
       // 2. Ahora sí, establecemos el valor en el formulario.
+      setContactValue(formattedNewContact.value);
       form.setFieldsValue({ contact: formattedNewContact.value });
 
       setIsContactModalOpen(false);
@@ -265,11 +274,13 @@ const StepOne = forwardRef((props, ref) => {
 
   const openCreateCustomerModal = () => {
     form.setFieldsValue({ customer: undefined });
+    setCustomerSearchValue('');
     onCustomerChange(undefined); // Reutilizamos la lógica de limpieza
     setIsCustomerModalOpen(true);
   };
 
   const openCreateContactModal = () => {
+    setContactValue(null);
     form.setFieldsValue({ contact: null });
     setIsContactModalOpen(true);
   };
@@ -368,6 +379,7 @@ const StepOne = forwardRef((props, ref) => {
           >
             <Space.Compact style={{ width: '50%' }}>
               <AutoComplete
+                value={customerSearchValue}
                 style={{ width: '100%' }}
                 options={options}
                 onSelect={onCustomerSelect}
@@ -424,6 +436,7 @@ const StepOne = forwardRef((props, ref) => {
           >
             <Space.Compact style={{ width: '50%' }}>
               <Select
+                value={contactValue}
                 // Forzar el re-montaje del componente cuando el cliente cambia.
                 key={selectedCustomer?.customer_id}
                 style={{ width: '100%' }}

@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Table, Tag, Spin, Button, Space, Input } from 'antd';
 import { Link } from 'react-router-dom';
+import OrderDrawer from '../order-drawer'; // Importamos el drawer
 import dayjs from 'dayjs';
 
-const columnsConfig = () => [
-    { 
+const columnsConfig = (handleViewOrder) => [
+    {
         title: 'Folio', 
         dataIndex: 'c_order_id', 
         key: 'c_order_id', 
@@ -49,8 +50,8 @@ const columnsConfig = () => [
         key: 'actions', 
         align: 'center', 
         render: (_, record) => (
-            <Space size="middle" wrap>
-              <Button type="primary" ghost onClick={() => console.log('Edit order', record.order_id)}>Ver / Editar</Button>
+            <Space size="middle">
+              <Button type="primary" ghost onClick={() => handleViewOrder(record)}>Ver / Editar</Button>
             </Space>
         )
     },
@@ -63,6 +64,19 @@ function OrdersTable() {
   const apiUrl = import.meta.env.VITE_API_URL;
   
   const [searchText, setSearchText] = useState('');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
+  // Función para mostrar el drawer con la información de la orden seleccionada
+  const handleViewOrder = (order) => {
+    setSelectedOrder(order);
+    setIsDrawerOpen(true);
+  };
+
+  // Función para cerrar el drawer
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+  };
   
   useEffect(() => {
     const fetchOrders = async () => {
@@ -85,7 +99,7 @@ function OrdersTable() {
     fetchOrders();
   }, [apiUrl]);
 
-  const columns = useMemo(() => columnsConfig(), []);
+  const columns = useMemo(() => columnsConfig(handleViewOrder), []);
 
   const filteredOrders = useMemo(() => 
     orders.filter(order =>
@@ -119,6 +133,13 @@ function OrdersTable() {
         dataSource={filteredOrders}
         rowKey="order_id"
         pagination={{ pageSize: 10, position: ['bottomCenter'] }}
+      />
+
+      {/* El drawer se renderiza aquí, pero solo es visible cuando 'open' es true */}
+      <OrderDrawer
+        open={isDrawerOpen}
+        onClose={handleCloseDrawer}
+        order={selectedOrder}
       />
     </div>
   );
