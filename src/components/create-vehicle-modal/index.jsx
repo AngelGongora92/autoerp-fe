@@ -67,7 +67,7 @@ const CreateVehicleModal = ({ open, onCreate, onCancel, customerId }) => {
   // Usaremos el `make_id` del option para buscar los modelos.
   const handleMakeChange = async (value, option) => {
     // Reset model field when make changes
-    form.setFieldsValue({ model: undefined });
+    form.setFieldsValue({ model_id: undefined });
     setModels([]);
 
     if (option?.make_id) {
@@ -119,14 +119,14 @@ const CreateVehicleModal = ({ open, onCreate, onCancel, customerId }) => {
         <Form form={form} layout="vertical" name="form_in_modal">
             <Row gutter={16}>
                 <Col span={12}>
-                    <Form.Item name="make" label="Marca" rules={[{ required: true, message: 'Por favor seleccione la marca' }]}>
+                    <Form.Item name="make_id" label="Marca" rules={[{ required: true, message: 'Por favor seleccione la marca' }]}>
                         <Select placeholder="Seleccione una marca" onChange={handleMakeChange} showSearch optionFilterProp="children">
-                            {makes.map(make => <Option key={make.make_id} value={make.make} make_id={make.make_id}>{make.make}</Option>)}
+                            {makes.map(make => <Option key={make.make_id} value={make.make_id} make_id={make.make_id}>{make.make}</Option>)}
                         </Select>
                     </Form.Item>
-                    <Form.Item name="model" label="Modelo" rules={[{ required: true, message: 'Por favor seleccione el modelo' }]}>
+                    <Form.Item name="model_id" label="Modelo" rules={[{ required: true, message: 'Por favor seleccione el modelo' }]}>
                         <Select placeholder="Seleccione un modelo" loading={modelsLoading} disabled={modelsLoading || models.length === 0} showSearch optionFilterProp="children">
-                            {models.map(model => <Option key={model.model_id} value={model.model}>{model.model}</Option>)}
+                            {models.map(model => <Option key={model.model_id} value={model.model_id}>{model.model}</Option>)}
                         </Select>
                     </Form.Item>
                     <Form.Item name="year" label="Año" rules={[{ required: true, message: 'Por favor ingrese el año' }]}>

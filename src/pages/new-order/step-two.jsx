@@ -24,7 +24,7 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
       const formattedOptions = data.map(vehicle => ({
         ...vehicle,
         value: vehicle.vehicle_id,
-        label: `${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''} - ${vehicle.vin ? `VIN:${vehicle.vin.slice(-6)}` : 'S/N'}`.trim(),
+        label: `${vehicle.year || ''} ${vehicle.model?.make?.make || ''} ${vehicle.model?.model || ''} - ${vehicle.vin ? `VIN:${vehicle.vin.slice(-6)}` : 'S/N'}`.trim(),
       }));
       setVehicleOptions(formattedOptions);
       return formattedOptions;
@@ -179,18 +179,18 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
               <Card title="Información del Vehículo" bordered={false} style={{ marginTop: 16, backgroundColor: '#FAFAFA' }}>
                 <Row gutter={16}>
                   <Col span={12}>
-                  <p><Text strong>Marca:</Text> {selectedVehicleInfo.make || 'N/A'}</p>
-                  <p><Text strong>Modelo:</Text> {selectedVehicleInfo.model || 'N/A'}</p>
+                  <p><Text strong>Marca:</Text> {selectedVehicleInfo.model?.make?.make || 'N/A'}</p>
+                  <p><Text strong>Modelo:</Text> {selectedVehicleInfo.model?.model || 'N/A'}</p>
                   <p><Text strong>Año:</Text> {selectedVehicleInfo.year || 'N/A'}</p>
                   <p><Text strong>VIN:</Text> {selectedVehicleInfo.vin || 'N/A'}</p>
                   <p><Text strong>Placas:</Text> {selectedVehicleInfo.plate || 'N/A'}</p>
                   <p><Text strong>KM:</Text> {selectedVehicleInfo.mileage || 'N/A'}</p>
-                  <p><Text strong>Tipo:</Text> {selectedVehicleInfo.vehicle_type.type || 'N/A'}</p>
+                  <p><Text strong>Tipo:</Text> {selectedVehicleInfo.vehicle_type?.type || 'N/A'}</p>
                   </Col>
                   <Col span={12}>
-                  <p><Text strong>Color:</Text> {selectedVehicleInfo.color.color || 'N/A'}</p>
-                  <p><Text strong>Motor:</Text> {selectedVehicleInfo.motor.type || 'N/A'}</p>
-                  <p><Text strong>Tranmisión:</Text> {selectedVehicleInfo.transmission || 'N/A'}</p>
+                  <p><Text strong>Color:</Text> {selectedVehicleInfo.color?.color || 'N/A'}</p>
+                  <p><Text strong>Motor:</Text> {selectedVehicleInfo.motor?.type || 'N/A'}</p>
+                  <p><Text strong>Transmisión:</Text> {selectedVehicleInfo.transmission?.type || 'N/A'}</p>
                   <p><Text strong>Cilindros:</Text> {selectedVehicleInfo.cylinders || 'N/A'}</p>
                   <p><Text strong>Litros:</Text> {selectedVehicleInfo.liters || 'N/A'}</p>
                   <p><Text strong>Flotilla:</Text> {selectedVehicleInfo.fleet_number || 'N/A'}</p>

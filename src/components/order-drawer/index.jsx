@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, Typography, List, Descriptions, Tag } from 'antd';
+import { Drawer, Typography, List, Descriptions, Tag, Spin, message } from 'antd';
 import dayjs from 'dayjs';
 
 const { Title } = Typography;
@@ -11,8 +11,58 @@ const { Title } = Typography;
  * @param {boolean} props.open - Controls the visibility of the drawer.
  * @param {Function} props.onClose - Function to call when the drawer is closed.
  * @param {object} props.order - The order object to display.
+ * @param {Map} props.customerMap - Map of customer IDs to names.
+ * @param {Map} props.employeeMap - Map of employee IDs to names.
  */
-const OrderDrawer = ({ open, onClose, order }) => {
+const OrderDrawer = ({ open, onClose, order, customerMap, employeeMap }) => {
+  const apiUrl = import.meta.env.VITE_API_URL;
+  const [contactInfo, setContactInfo] = useState(null);
+  const [vehicleInfo, setVehicleInfo] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
+  useEffect(() => {
+    // Solo buscar si el drawer está abierto y tenemos una orden
+    if (open && order) {
+      const fetchDetails = async () => {
+        setLoadingDetails(true);
+        try {
+          // Usamos promesas individuales para más claridad
+          const contactPromise = order.contact_id
+            ? fetch(`${apiUrl}/contacts/${order.contact_id}`)
+            : Promise.resolve(null);
+
+          const vehiclePromise = order.vehicle_id
+            ? fetch(`${apiUrl}/vehicles/${order.vehicle_id}`)
+            : Promise.resolve(null);
+
+          const [contactResponse, vehicleResponse] = await Promise.all([contactPromise, vehiclePromise]);
+
+          if (order.contact_id) {
+            const contactData = contactResponse && contactResponse.ok ? await contactResponse.json() : null;
+            setContactInfo(contactData);
+          }
+          if (order.vehicle_id) {
+            const vehicleDataArray = vehicleResponse && vehicleResponse.ok ? await vehicleResponse.json() : null;
+            // La API devuelve un array, tomamos el primer elemento.
+            setVehicleInfo(vehicleDataArray && vehicleDataArray.length > 0 ? vehicleDataArray[0] : null);
+          }
+
+        } catch (error) {
+          console.error("Error fetching order details:", error);
+          message.error("No se pudieron cargar los detalles adicionales de la orden.");
+        } finally {
+          setLoadingDetails(false);
+        }
+      };
+
+      fetchDetails();
+    }
+    return () => {
+        setContactInfo(null);
+        setVehicleInfo(null);
+    }
+  }, [open, order, apiUrl]);
+
   // No renderizar nada si no hay una orden para mostrar
   if (!order) {
     return null;
@@ -40,17 +90,23 @@ const OrderDrawer = ({ open, onClose, order }) => {
       open={open}
       destroyOnClose // Destruye los hijos del Drawer al cerrar para resetear el estado
     >
-      <Descriptions bordered column={1} size="small">
-        <Descriptions.Item label="Folio">{order.c_order_id}</Descriptions.Item>
-        <Descriptions.Item label="Fecha de Orden">{dayjs(order.order_date).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
-        <Descriptions.Item label="Cliente ID">{order.customer_id}</Descriptions.Item>
-        <Descriptions.Item label="Contacto ID">{order.contact_id}</Descriptions.Item>
-        <Descriptions.Item label="Vehículo ID">{order.vehicle_id || 'No asignado'}</Descriptions.Item>
-        <Descriptions.Item label="Asesor ID">{order.advisor_id}</Descriptions.Item>
-        <Descriptions.Item label="Técnico ID">{order.mechanic_id}</Descriptions.Item>
-        <Descriptions.Item label="Estatus Operativo">{getStatusTag(order.op_status_id)}</Descriptions.Item>
-        <Descriptions.Item label="Estatus Administrativo">{order.adm_status_id || 'No asignado'}</Descriptions.Item>
-      </Descriptions>
+      {loadingDetails ? (
+        <div style={{ textAlign: 'center', padding: '50px' }}>
+          <Spin tip="Cargando detalles..." />
+        </div>
+      ) : (
+        <Descriptions bordered column={1} size="small">
+          <Descriptions.Item label="Folio">{order.c_order_id}</Descriptions.Item>
+          <Descriptions.Item label="Fecha de Orden">{dayjs(order.order_date).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
+          <Descriptions.Item label="Cliente">{customerMap?.get(order.customer_id) || `ID: ${order.customer_id}`}</Descriptions.Item>
+          <Descriptions.Item label="Contacto">{contactInfo ? `${contactInfo.fname || ''} ${contactInfo.lname || ''}`.trim() : (order.contact_id || 'N/A')}</Descriptions.Item>
+          <Descriptions.Item label="Vehículo">{vehicleInfo ? `${vehicleInfo.model?.make?.make || ''} ${vehicleInfo.model?.model || ''} (${vehicleInfo.year || ''})`.trim() : (order.vehicle_id || 'No asignado')}</Descriptions.Item>
+          <Descriptions.Item label="Asesor">{employeeMap?.get(order.advisor_id) || `ID: ${order.advisor_id}`}</Descriptions.Item>
+          <Descriptions.Item label="Técnico">{employeeMap?.get(order.mechanic_id) || `ID: ${order.mechanic_id}`}</Descriptions.Item>
+          <Descriptions.Item label="Estatus Operativo">{getStatusTag(order.op_status_id)}</Descriptions.Item>
+          <Descriptions.Item label="Estatus Administrativo">{order.adm_status_id || 'No asignado'}</Descriptions.Item>
+        </Descriptions>
+      )}
 
       {/* Sección para mostrar items/servicios (actualmente deshabilitada) */}
       {/* 

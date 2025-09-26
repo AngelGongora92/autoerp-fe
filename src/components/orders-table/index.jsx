@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import OrderDrawer from '../order-drawer'; // Importamos el drawer
 import dayjs from 'dayjs';
 
-const columnsConfig = (handleViewOrder) => [
+const columnsConfig = (handleViewOrder, customerMap, employeeMap) => [
     {
         title: 'Folio', 
         dataIndex: 'c_order_id', 
@@ -21,22 +21,25 @@ const columnsConfig = (handleViewOrder) => [
         sorter: (a, b) => dayjs(a.order_date).unix() - dayjs(b.order_date).unix()
     },
     { 
-        title: 'Cliente ID', 
+        title: 'Cliente', 
         dataIndex: 'customer_id', 
         key: 'customer_id', 
-        align: 'center' 
+        align: 'center',
+        render: (id) => customerMap.get(id) || `ID: ${id}`
     },
     { 
-        title: 'Asesor ID', 
+        title: 'Asesor', 
         dataIndex: 'advisor_id', 
         key: 'advisor_id', 
-        align: 'center' 
+        align: 'center',
+        render: (id) => employeeMap.get(id) || `ID: ${id}`
     },
     { 
-        title: 'Técnico ID', 
+        title: 'Técnico', 
         dataIndex: 'mechanic_id', 
         key: 'mechanic_id', 
-        align: 'center' 
+        align: 'center',
+        render: (id) => employeeMap.get(id) || `ID: ${id}`
     },
     { 
         title: 'Estatus Op.', 
@@ -62,6 +65,10 @@ function OrdersTable() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const apiUrl = import.meta.env.VITE_API_URL;
+
+  const [customers, setCustomers] = useState([]);
+  const [advisors, setAdvisors] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
   
   const [searchText, setSearchText] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -80,26 +87,61 @@ function OrdersTable() {
   
   useEffect(() => {
     const fetchOrders = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await fetch(`${apiUrl}/orders/`);
-            if (!response.ok) {
-                throw new Error('No se pudieron cargar las órdenes');
-            }
-            const data = await response.json();
-            setOrders(data);
-        } catch (err) {
-            setError(err);
-        } finally {
-            setLoading(false);
+      setLoading(true);
+      setError(null);
+      try {
+        const [ordersRes, customersRes, advisorsRes, techniciansRes] = await Promise.all([
+          fetch(`${apiUrl}/orders/`),
+          fetch(`${apiUrl}/customers/`),
+          fetch(`${apiUrl}/employees/1`), // Asesores
+          fetch(`${apiUrl}/employees/2`), // Técnicos
+        ]);
+
+        if (!ordersRes.ok || !customersRes.ok || !advisorsRes.ok || !techniciansRes.ok) {
+          throw new Error('No se pudieron cargar todos los datos necesarios');
         }
+
+        const [ordersData, customersData, advisorsData, techniciansData] = await Promise.all([
+          ordersRes.json(),
+          customersRes.json(),
+          advisorsRes.json(),
+          techniciansRes.json(),
+        ]);
+
+        setOrders(ordersData);
+        setCustomers(customersData);
+        setAdvisors(advisorsData);
+        setTechnicians(techniciansData);
+
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchOrders();
   }, [apiUrl]);
 
-  const columns = useMemo(() => columnsConfig(handleViewOrder), []);
+  const customerMap = useMemo(() => {
+    return new Map(customers.map(c => [
+      c.customer_id, 
+      c.is_company ? c.cname : `${c.fname || ''} ${c.lname || ''}`.trim()
+    ]));
+  }, [customers]);
+
+  const employeeMap = useMemo(() => {
+    const allEmployees = [...advisors, ...technicians];
+    return new Map(allEmployees.map(e => [
+      e.employee_id,
+      `${e.fname || ''} ${e.lname1 || ''}`.trim()
+    ]));
+  }, [advisors, technicians]);
+
+  const columns = useMemo(
+    () => columnsConfig(handleViewOrder, customerMap, employeeMap), 
+    [customerMap, employeeMap]
+  );
 
   const filteredOrders = useMemo(() => 
     orders.filter(order =>
@@ -140,6 +182,8 @@ function OrdersTable() {
         open={isDrawerOpen}
         onClose={handleCloseDrawer}
         order={selectedOrder}
+        customerMap={customerMap}
+        employeeMap={employeeMap}
       />
     </div>
   );
