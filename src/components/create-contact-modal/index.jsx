@@ -20,7 +20,7 @@ function CreateContactModal({ open, onCreate, onCancel, customerId }) {
 
     try {
       // Obtenemos todos los contactos del cliente para verificar en el frontend.
-      const response = await fetch(`${apiUrl}/contacts/${customerId}`);
+      const response = await fetch(`${apiUrl}/customers/${customerId}/contacts`);
       if (!response.ok) throw new Error('Error del servidor al validar.');
 
       const existingContacts = await response.json();

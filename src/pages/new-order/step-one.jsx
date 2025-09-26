@@ -168,7 +168,7 @@ const StepOne = forwardRef((props, ref) => {
       setContactLoading(true);
       setContactOptions([]);
       try {
-        const response = await fetch(`${apiUrl}/contacts/${customerId}`);
+        const response = await fetch(`${apiUrl}/customers/${customerId}/contacts`);
         if (!response.ok) throw new Error('Error en la respuesta de la red para contactos');
         const data = await response.json();
         const formattedOptions = data.map(contact => {
