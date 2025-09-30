@@ -169,9 +169,6 @@ const CreateVehicleModal = ({ open, onCreate, onCancel, customerId }) => {
                     <Form.Item name="liters" label="Litros">
                         <Input />
                     </Form.Item>
-                    <Form.Item name="fleet_number" label="Número de Flotilla">
-                        <Input />
-                    </Form.Item>
                 </Col>
             </Row>
         </Form>
