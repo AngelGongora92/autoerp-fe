@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Table, Tag, Spin, Button, Space, Input } from 'antd';
 import { Link } from 'react-router-dom';
 import OrderDrawer from '../order-drawer'; // Importamos el drawer
+import { useMediaQuery } from 'react-responsive';
 import dayjs from 'dayjs';
 
 const columnsConfig = (handleViewOrder, customerMap, employeeMap) => [
@@ -73,6 +74,9 @@ function OrdersTable() {
   const [searchText, setSearchText] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  // Hook para detectar si estamos en un dispositivo móvil
+  const isMobile = useMediaQuery({ maxWidth: 767 });
 
   // Función para mostrar el drawer con la información de la orden seleccionada
   const handleViewOrder = (order) => {
@@ -175,6 +179,8 @@ function OrdersTable() {
         dataSource={filteredOrders}
         rowKey="order_id"
         pagination={{ pageSize: 10, position: ['bottomCenter'] }}
+        // Hacemos que la tabla sea desplazable horizontalmente solo en móvil
+        scroll={isMobile ? { x: 'max-content' } : undefined}
       />
 
       {/* El drawer se renderiza aquí, pero solo es visible cuando 'open' es true */}

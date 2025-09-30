@@ -1,4 +1,5 @@
 import { Badge, Space, Typography, Button } from "antd";
+import classNames from 'classnames';
 import { 
   MailOutlined, 
   BellFilled, 
@@ -9,7 +10,11 @@ import {
 
 
 
-function AppHeader({ collapsed, onToggle }) {
+function AppHeader({ collapsed, onToggle, showMenuButtonAnimation }) {
+  const menuButtonClasses = classNames('AppHeader-menu-button', {
+    'menu-button-highlight': showMenuButtonAnimation,
+  });
+
   return (
     <div className="AppHeader">
       <Space align="center">
@@ -17,7 +22,7 @@ function AppHeader({ collapsed, onToggle }) {
           type="text"
           icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           onClick={onToggle}
-          className="AppHeader-menu-button"
+          className={menuButtonClasses}
         />
         <CarOutlined className="AppHeader-logo-icon" />
         <Typography.Title level={4} className="AppHeader-title">

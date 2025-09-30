@@ -1,9 +1,9 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { Form, Select, Button, Space, Spin, message, Row, Col, Card, Typography } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Form, Select, Button, Space, Spin, message, Row, Col, Card, Typography, Input, Collapse, Checkbox, Tooltip } from 'antd';
+import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import CreateVehicleModal from '../../components/create-vehicle-modal';
 
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 
 const StepTwo = forwardRef(({ orderData }, ref) => {
   const [form] = Form.useForm();
@@ -12,6 +12,8 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
   const [selectedCustomerInfo, setSelectedCustomerInfo] = useState(null);
   const [selectedVehicleInfo, setSelectedVehicleInfo] = useState(null);
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
+  const [extraItems, setExtraItems] = useState([]);
+  const [extraItemsLoading, setExtraItemsLoading] = useState(false);
   const apiUrl = import.meta.env.VITE_API_URL;
 
   const fetchVehicles = useCallback(async (customerId) => {
@@ -51,6 +53,24 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
       };
       fetchCustomerInfo(orderData.customer_id);
       fetchVehicles(orderData.customer_id);
+
+      const fetchExtraItems = async () => {
+        setExtraItemsLoading(true);
+        try {
+          const response = await fetch(`${apiUrl}/orders/extra-items/`);
+          if (!response.ok) throw new Error('Error al cargar los ítems extra.');
+          const data = await response.json();
+          setExtraItems(data);
+        } catch (error) {
+          console.error("Error fetching extra items:", error);
+          message.error(error.message);
+        } finally {
+          setExtraItemsLoading(false);
+        }
+      };
+
+      fetchExtraItems();
+
     }
   }, [orderData, fetchVehicles]);
 
@@ -98,17 +118,49 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
     submitStep: async () => {
       try {
         const values = await form.validateFields();
-        const payload = { vehicle_id: values.vehicle };
-        const response = await fetch(`${apiUrl}/orders/${orderData.order_id}`, {
+
+        // 1. Preparamos el payload para actualizar la orden principal (vehículo y kilometraje)
+        const payload = { 
+          vehicle_id: values.vehicle,
+          // La API espera 'c_mileage' como un entero
+          c_mileage: values.current_mileage ? parseInt(values.current_mileage, 10) : null,
+        };
+
+        // 2. Actualizamos la orden
+        const orderUpdateResponse = await fetch(`${apiUrl}/orders/${orderData.order_id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        if (!response.ok) {
-          const errorData = await response.json();
+
+        if (!orderUpdateResponse.ok) {
+          const errorData = await orderUpdateResponse.json();
           throw new Error(errorData.detail || 'No se pudo actualizar la orden con el vehículo.');
         }
-        return await response.json();
+
+        const updatedOrder = await orderUpdateResponse.json();
+
+        // 3. Preparamos y enviamos la información extra
+        if (values.extra_items) {
+          const extraInfoPromises = Object.entries(values.extra_items)
+            .filter(([, info]) => info) // Filtramos los que tienen valor
+            .map(([itemId, info]) => {
+              const extraInfoPayload = {
+                order_id: orderData.order_id,
+                item_id: parseInt(itemId, 10),
+                info: info,
+              };
+              return fetch(`${apiUrl}/orders/extra-info/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(extraInfoPayload),
+              });
+            });
+
+          await Promise.all(extraInfoPromises);
+        }
+
+        return updatedOrder;
       } catch (errorInfo) {
         if (errorInfo.errorFields) {
           message.error('Por favor, seleccione un vehículo.');
@@ -193,7 +245,6 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
                   <p><Text strong>Transmisión:</Text> {selectedVehicleInfo.transmission?.type || 'N/A'}</p>
                   <p><Text strong>Cilindros:</Text> {selectedVehicleInfo.cylinders || 'N/A'}</p>
                   <p><Text strong>Litros:</Text> {selectedVehicleInfo.liters || 'N/A'}</p>
-                  <p><Text strong>Flotilla:</Text> {selectedVehicleInfo.fleet_number || 'N/A'}</p>
                   </Col>
                 </Row>
               </Card>
@@ -201,7 +252,39 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
           </Form>
         </Col>
         <Col span={12}>
-          {/* Columna izquierda, actualmente vacía según la solicitud */}
+          <Form form={form} layout="vertical">
+            <Form.Item
+              label="Kilometraje Actual"
+              name="current_mileage"
+            >
+              <Input type="number" addonAfter="km" style={{ width: '50%' }} />
+            </Form.Item>
+
+            <Collapse ghost>
+              <Collapse.Panel header="Informacion extra" key="1">
+                {extraItemsLoading ? (
+                  <Spin tip="Cargando ítems..." />
+                ) : (
+                  extraItems.map(item => (
+                    <Form.Item 
+                      key={item.item_id}
+                      name={['extra_items', item.item_id]}
+                      label={
+                        <span>
+                          {item.title}
+                          <Tooltip title={item.description} placement="right">
+                            <QuestionCircleOutlined style={{ marginLeft: 8, color: 'rgba(0, 0, 0, 0.45)' }} />
+                          </Tooltip>
+                        </span>
+                      }
+                      style={{ marginBottom: 8 }}
+                    >
+                      <Input placeholder={`Ingrese ${item.title.toLowerCase()}`} />
+                    </Form.Item>
+                  )))}
+              </Collapse.Panel>
+            </Collapse>
+          </Form>
         </Col>
       </Row>
       <CreateVehicleModal
