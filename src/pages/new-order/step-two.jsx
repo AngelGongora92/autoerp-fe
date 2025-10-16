@@ -1,5 +1,5 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { Form, Select, Button, Space, Spin, message, Row, Col, Card, Typography, Input, Collapse, Checkbox, Tooltip } from 'antd';
+import { Form, Select, Button, Space, Spin, message, Row, Col, Card, Typography, Input, Collapse, Tooltip, Slider, InputNumber } from 'antd';
 import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import CreateVehicleModal from '../../components/create-vehicle-modal';
 
@@ -14,6 +14,7 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
   const [extraItems, setExtraItems] = useState([]);
   const [extraItemsLoading, setExtraItemsLoading] = useState(false);
+  const [activeCollapseKey, setActiveCollapseKey] = useState([]);
   const apiUrl = import.meta.env.VITE_API_URL;
 
   const fetchVehicles = useCallback(async (customerId) => {
@@ -82,9 +83,43 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
       );
       if (previouslySelectedVehicle) {
         setSelectedVehicleInfo(previouslySelectedVehicle);
+        // Si la orden ya tiene un 'c_mileage' guardado, úsalo. Si no, usa el del vehículo.
+        form.setFieldsValue({ 
+          current_mileage: orderData.c_mileage ?? previouslySelectedVehicle.mileage 
+        });
       }
     }
   }, [orderData, vehicleOptions, form]);
+
+  // Efecto para cargar la información extra si ya existe en la orden
+  useEffect(() => {
+    if (orderData?.has_extra_info) {
+      setActiveCollapseKey(['1']); // Expande el panel de información extra
+      const fetchAndSetExtraInfo = async () => {
+        try {
+          const response = await fetch(`${apiUrl}/orders/extra-info/${orderData.order_id}`);
+          if (!response.ok) {
+            console.warn('No se pudo obtener la información extra guardada.');
+            return;
+          }
+          const extraInfoData = await response.json();
+
+          // Transformamos los datos para el formato del formulario: { extra_items: { '1': 'info1', '2': 'info2' } }
+          const formValues = extraInfoData.reduce((acc, item) => {
+            if (item.item_id && item.info) {
+              acc[item.item_id] = item.info;
+            }
+            return acc;
+          }, {});
+
+          form.setFieldsValue({ extra_items: formValues });
+        } catch (error) {
+          message.error('No se pudo cargar la información extra guardada.');
+        }
+      };
+      fetchAndSetExtraInfo();
+    }
+  }, [orderData, apiUrl, form]);
 
   const handleCreateVehicle = async (values) => {
     try {
@@ -118,12 +153,21 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
     submitStep: async () => {
       try {
         const values = await form.validateFields();
+        
+        // Buscamos la info completa del vehículo seleccionado para asegurar que tenemos el 'mileage' original.
+        const currentVehicleData = vehicleOptions.find(opt => opt.value === values.vehicle);
+
+        // Verificamos si se llenó algún campo de información extra.
+        const hasExtraInfo = !!(values.extra_items && Object.values(values.extra_items).some(info => info));
 
         // 1. Preparamos el payload para actualizar la orden principal (vehículo y kilometraje)
         const payload = { 
           vehicle_id: values.vehicle,
           // La API espera 'c_mileage' como un entero
+          fuel_level: values.fuel_level !== undefined ? Math.round(values.fuel_level) : null,
           c_mileage: values.current_mileage ? parseInt(values.current_mileage, 10) : null,
+          p_mileage: currentVehicleData?.mileage ? parseInt(currentVehicleData.mileage, 10) : null,
+          has_extra_info: hasExtraInfo,
         };
 
         // 2. Actualizamos la orden
@@ -140,24 +184,27 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
 
         const updatedOrder = await orderUpdateResponse.json();
 
-        // 3. Preparamos y enviamos la información extra
+        // 3. Preparamos y enviamos la información extra en un solo batch
         if (values.extra_items) {
-          const extraInfoPromises = Object.entries(values.extra_items)
+          const extraInfoPayloads = Object.entries(values.extra_items)
             .filter(([, info]) => info) // Filtramos los que tienen valor
-            .map(([itemId, info]) => {
-              const extraInfoPayload = {
-                order_id: orderData.order_id,
-                item_id: parseInt(itemId, 10),
-                info: info,
-              };
-              return fetch(`${apiUrl}/orders/extra-info/`, {
+            .map(([itemId, info]) => ({
+              order_id: orderData.order_id,
+              item_id: parseInt(itemId, 10),
+              info: info,
+            }));
+
+          // Solo enviamos la petición si hay algo que guardar
+          if (extraInfoPayloads.length > 0) {
+            const extraInfoResponse = await fetch(`${apiUrl}/orders/extra-info/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(extraInfoPayload),
-              });
+                body: JSON.stringify(extraInfoPayloads), // Enviamos el array completo
             });
-
-          await Promise.all(extraInfoPromises);
+            if (!extraInfoResponse.ok) {
+              throw new Error('No se pudo guardar la información extra.');
+            }
+          }
         }
 
         return updatedOrder;
@@ -179,14 +226,30 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
 
   const onVehicleSelect = (value, option) => {
     setSelectedVehicleInfo(option);
-    form.setFieldsValue({ vehicle: value });
+    // Al seleccionar, también establecemos el kilometraje del vehículo en el campo correspondiente.
+    form.setFieldsValue({ vehicle: value, current_mileage: option.mileage });
   };
 
   const onVehicleChange = (value) => {
     if (!value) {
       setSelectedVehicleInfo(null);
+      form.setFieldsValue({ current_mileage: undefined }); // Limpiamos el kilometraje si se deselecciona el vehículo
     }
   };
+
+  // --- Slider de Combustible ---
+  const fuelMarks = {
+    0: 'E',
+    12.5: '1/8',
+    25: '1/4',
+    37.5: '3/8',
+    50: '1/2',
+    62.5: '5/8',
+    75: '3/4',
+    87.5: '7/8',
+    100: 'F',
+  };
+  // --- Fin Slider ---
 
   return (
     <div>
@@ -195,7 +258,7 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
           <p style={{ margin: 0, textAlign: 'center' }}>
             <Text strong>Orden:</Text> {orderData?.c_order_id || 'N/A'}
             <span style={{ margin: '0 16px' }}>|</span>
-            <Text strong>Cliente:</Text> 
+            <Text strong>Cliente: </Text> 
             {selectedCustomerInfo ? 
             (selectedCustomerInfo.is_company ? 
             selectedCustomerInfo.cname : `${selectedCustomerInfo.fname || ''} ${selectedCustomerInfo.lname || ''}`.trim()) : 'Cargando...'}
@@ -203,56 +266,103 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
         </Col>
       </Row>
 
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form form={form} >
-            <Form.Item
-              label="Vehículo"
-              name="vehicle"
-              rules={[{ required: true, message: 'Por favor, seleccione un vehículo' }]}
-            >
-              <Space.Compact style={{ width: '70%' }}>
-                <Select
-                  style={{ width: '100%' }}
-                  loading={vehicleLoading}
-                  options={vehicleOptions}
-                  disabled={!orderData || vehicleLoading}
-                  placeholder={getPlaceholder()}
-                  notFoundContent={vehicleLoading ? <Spin size="small" /> : null}
-                  onSelect={onVehicleSelect}
-                  onChange={onVehicleChange}
-                  allowClear
-                />
-                <Button icon={<PlusOutlined />} disabled={!orderData} onClick={() => setIsVehicleModalOpen(true)} />
-              </Space.Compact>
-            </Form.Item>
-            
+      <Form form={form} layout="horizontal" labelCol={{ span: 8 }} wrapperCol={{ span: 16 }}>
+        <Row gutter={24}>
+          <Col span={12}>
+              <Form.Item
+                label="Vehículo"
+                name="vehicle"
+                rules={[{ required: true, message: 'Por favor, seleccione un vehículo' }]}
+                labelCol={{ span: 4 }} // Ajuste específico para este campo
+                wrapperCol={{ span: 20 }} // Ajuste específico para este campo
+              >
+                <Space.Compact style={{ width: '100%' }}>
+                  <Select
+                    style={{ width: '100%' }}
+                    loading={vehicleLoading}
+                    options={vehicleOptions}
+                    disabled={!orderData || vehicleLoading}
+                    placeholder={getPlaceholder()}
+                    notFoundContent={vehicleLoading ? <Spin size="small" /> : null}
+                    onSelect={onVehicleSelect}
+                    onChange={onVehicleChange}
+                    allowClear
+                  />
+                  <Button icon={<PlusOutlined />} disabled={!orderData} onClick={() => setIsVehicleModalOpen(true)} />
+                </Space.Compact>
+              </Form.Item>
+              
+              {selectedVehicleInfo && (
+                <Card title="Información del Vehículo" bordered={false} style={{ marginTop: 16, backgroundColor: '#FAFAFA' }}>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                    <p><Text strong>Marca:</Text> {selectedVehicleInfo.model?.make?.make || 'N/A'}</p>
+                    <p><Text strong>Modelo:</Text> {selectedVehicleInfo.model?.model || 'N/A'}</p>
+                    <p><Text strong>Año:</Text> {selectedVehicleInfo.year || 'N/A'}</p>
+                    <p><Text strong>VIN:</Text> {selectedVehicleInfo.vin || 'N/A'}</p>
+                    <p><Text strong>Placas:</Text> {selectedVehicleInfo.plate || 'N/A'}</p>
+                    <p><Text strong>KM:</Text> {selectedVehicleInfo.mileage || 'N/A'}</p>
+                    <p><Text strong>Tipo:</Text> {selectedVehicleInfo.vehicle_type?.type || 'N/A'}</p>
+                    </Col>
+                    <Col span={12}>
+                    <p><Text strong>Color:</Text> {selectedVehicleInfo.color?.color || 'N/A'}</p>
+                    <p><Text strong>Motor:</Text> {selectedVehicleInfo.motor?.type || 'N/A'}</p>
+                    <p><Text strong>Transmisión:</Text> {selectedVehicleInfo.transmission?.type || 'N/A'}</p>
+                    <p><Text strong>Cilindros:</Text> {selectedVehicleInfo.cylinders || 'N/A'}</p>
+                    <p><Text strong>Litros:</Text> {selectedVehicleInfo.liters || 'N/A'}</p>
+                    </Col>
+                  </Row>
+                </Card>
+              )}
+          </Col>
+          <Col span={12}>
             {selectedVehicleInfo && (
-              <Card title="Información del Vehículo" bordered={false} style={{ marginTop: 16, backgroundColor: '#FAFAFA' }}>
-                <Row gutter={16}>
-                  <Col span={12}>
-                  <p><Text strong>Marca:</Text> {selectedVehicleInfo.model?.make?.make || 'N/A'}</p>
-                  <p><Text strong>Modelo:</Text> {selectedVehicleInfo.model?.model || 'N/A'}</p>
-                  <p><Text strong>Año:</Text> {selectedVehicleInfo.year || 'N/A'}</p>
-                  <p><Text strong>VIN:</Text> {selectedVehicleInfo.vin || 'N/A'}</p>
-                  <p><Text strong>Placas:</Text> {selectedVehicleInfo.plate || 'N/A'}</p>
-                  <p><Text strong>KM:</Text> {selectedVehicleInfo.mileage || 'N/A'}</p>
-                  <p><Text strong>Tipo:</Text> {selectedVehicleInfo.vehicle_type?.type || 'N/A'}</p>
-                  </Col>
-                  <Col span={12}>
-                  <p><Text strong>Color:</Text> {selectedVehicleInfo.color?.color || 'N/A'}</p>
-                  <p><Text strong>Motor:</Text> {selectedVehicleInfo.motor?.type || 'N/A'}</p>
-                  <p><Text strong>Transmisión:</Text> {selectedVehicleInfo.transmission?.type || 'N/A'}</p>
-                  <p><Text strong>Cilindros:</Text> {selectedVehicleInfo.cylinders || 'N/A'}</p>
-                  <p><Text strong>Litros:</Text> {selectedVehicleInfo.liters || 'N/A'}</p>
-                  </Col>
-                </Row>
-              </Card>
+              <>
+                <Form.Item
+                  label={selectedVehicleInfo.motor?.type === 'electrico' ? 'Nivel de Carga' : 'Nivel de Combustible'}
+                  name="fuel_level"
+                  initialValue={50}
+                  labelCol={{ span: 24 }}
+                  wrapperCol={{ span: 24 }}
+                  style={{ marginBottom: 0 }}
+                >
+                  <Form.Item noStyle dependencies={['fuel_level']}>
+                    {({ getFieldValue }) => {
+                      const inputValue = getFieldValue('fuel_level');
+                      const isElectric = selectedVehicleInfo.motor?.type === 'electrico';
+                      if (isElectric) {
+                        return (
+                          <Row align="middle" gutter={16}>
+                            <Col span={18}>
+                              <Slider tooltip={{ open: false }} min={0} max={100} value={inputValue} onChange={(val) => form.setFieldsValue({ fuel_level: val })} />
+                            </Col>
+                            <Col span={6}>
+                              <InputNumber
+                                min={0}
+                                max={100}
+                                style={{ width: '100%' }}
+                                addonAfter="%"
+                                value={inputValue}
+                                onChange={(val) => form.setFieldsValue({ fuel_level: val })}
+                              />
+                            </Col>
+                          </Row>
+                        );
+                      }
+                      // Lógica para combustible normal
+                      return (
+                        <Row>
+                          <Col span={18}>
+                            <Slider marks={fuelMarks} tooltip={{ open: false }} step={12.5} value={inputValue} onChange={(val) => form.setFieldsValue({ fuel_level: val })} />
+                          </Col>
+                        </Row>
+                      );
+                    }}
+                  </Form.Item>
+                </Form.Item>
+                <div style={{ height: '24px' }} /> {/* Espacio para alinear con el siguiente campo */}
+              </>
             )}
-          </Form>
-        </Col>
-        <Col span={12}>
-          <Form form={form} layout="vertical">
             <Form.Item
               label="Kilometraje Actual"
               name="current_mileage"
@@ -260,13 +370,18 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
               <Input type="number" addonAfter="km" style={{ width: '50%' }} />
             </Form.Item>
 
-            <Collapse ghost>
-              <Collapse.Panel header="Informacion extra" key="1">
-                {extraItemsLoading ? (
+            <Collapse
+              ghost
+              activeKey={activeCollapseKey}
+              onChange={(keys) => setActiveCollapseKey(keys)}
+              items={[{
+                key: '1',
+                label: 'Informacion extra',
+                children: extraItemsLoading ? (
                   <Spin tip="Cargando ítems..." />
                 ) : (
                   extraItems.map(item => (
-                    <Form.Item 
+                    <Form.Item
                       key={item.item_id}
                       name={['extra_items', item.item_id]}
                       label={
@@ -281,12 +396,13 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
                     >
                       <Input placeholder={`Ingrese ${item.title.toLowerCase()}`} />
                     </Form.Item>
-                  )))}
-              </Collapse.Panel>
-            </Collapse>
-          </Form>
-        </Col>
-      </Row>
+                  ))
+                ),
+              }]}
+            />
+          </Col>
+        </Row>
+      </Form>
       <CreateVehicleModal
         open={isVehicleModalOpen}
         onCreate={handleCreateVehicle}
