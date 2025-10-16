@@ -21,6 +21,7 @@ const NewOrderPage = () => {
   const [orderData, setOrderData] = useState(null); // Estado para guardar la orden
   const stepOneRef = useRef(null);
   const stepTwoRef = useRef(null); // Referencia para el Paso 2
+  const stepThreeRef = useRef(null); // Referencia para el Paso 3
 
   const next = async () => {
     // Si estamos en el primer paso, validamos el formulario del StepOne
@@ -47,6 +48,18 @@ const NewOrderPage = () => {
         setCurrent(2);
       } catch (error) {
         console.error('Fallo en el paso 2:', error);
+      } finally {
+        setLoading(false);
+      }
+    } else if (current === 2) {
+      setLoading(true);
+      try {
+        const updatedOrder = await stepThreeRef.current.submitStep();
+        setOrderData(updatedOrder);
+        message.success('Paso 3 completado. Avanzando...');
+        setCurrent(3);
+      } catch (error) {
+        console.error('Fallo en el paso 3:', error);
       } finally {
         setLoading(false);
       }
@@ -89,7 +102,7 @@ const NewOrderPage = () => {
       <div style={contentStyle}>
         {current === 0 && <StepOne ref={stepOneRef} />}
         {current === 1 && <StepTwo ref={stepTwoRef} orderData={orderData} />}
-        {current === 2 && <h2>Paso 3: Dirección de Envío</h2>}
+        {current === 2 && <StepThree ref={stepThreeRef} orderData={orderData} />}
         {current === 3 && <h2>Paso 4: Resumen y Finalización</h2>}
       </div>
 
