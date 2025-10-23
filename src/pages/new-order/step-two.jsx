@@ -88,6 +88,9 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
           current_mileage: orderData.c_mileage ?? previouslySelectedVehicle.mileage 
         });
       }
+      if (orderData.fuel_level !== null && orderData.fuel_level !== undefined) {
+        form.setFieldsValue({ fuel_level: orderData.fuel_level });
+      }
     }
   }, [orderData, vehicleOptions, form]);
 
