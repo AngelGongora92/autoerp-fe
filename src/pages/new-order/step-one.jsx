@@ -32,6 +32,10 @@ const StepOne = forwardRef((props, ref) => {
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
+  // Estado para el último folio
+  const [lastFolio, setLastFolio] = useState(null);
+  const [folioLoading, setFolioLoading] = useState(true);
+
   // useEffect para buscar asesores
   useEffect(() => {
     const fetchAdvisors = async () => {
@@ -76,6 +80,41 @@ const StepOne = forwardRef((props, ref) => {
       }
     };
     fetchTechnicians();
+  }, [apiUrl, form]);
+
+  // useEffect para obtener el último folio y autocompletar el siguiente
+  useEffect(() => {
+    const fetchLastFolio = async () => {
+      setFolioLoading(true);
+      try {
+        // Usamos el nuevo endpoint para obtener la última orden
+        const response = await fetch(`${apiUrl}/orders/last-order-id/`);
+        if (!response.ok) {
+          console.warn('No se pudo obtener el último folio.');
+          setLastFolio(null);
+          return;
+        }
+        // Leemos la respuesta como texto plano, ya que la API no devuelve un JSON.
+        const lastFolioValue = await response.text();
+        setLastFolio(lastFolioValue);
+
+        // Calcular y establecer el siguiente folio
+        if (lastFolioValue) {
+          const match = lastFolioValue.match(/(\d+)$/);
+          if (match) {
+            const number = parseInt(match[1], 10);
+            const prefix = lastFolioValue.substring(0, match.index);
+            form.setFieldsValue({ folio: `${prefix}${number + 1}` });
+          }
+        }
+      } catch (error) {
+        console.error("Error al obtener el último folio:", error);
+        setLastFolio(null);
+      } finally {
+        setFolioLoading(false);
+      }
+    };
+    fetchLastFolio();
   }, [apiUrl, form]);
 
   const searchCustomers = async (searchText) => {
@@ -409,7 +448,14 @@ const StepOne = forwardRef((props, ref) => {
             rules={[
               { required: true, message: 'Por favor, ingrese el folio' },
               { validator: validateFolio, validateTrigger: 'onBlur' }
-            ]}
+            ]}  
+            extra={
+              folioLoading ? 
+              <Spin size="small" /> : 
+              lastFolio ? 
+              `Último folio creado: ${lastFolio}` : 
+              'No se encontró un folio anterior.'
+            }
           >
             <Input placeholder="Ingrese el folio" style={{ width: '50%' }} allowClear />
           </Form.Item>

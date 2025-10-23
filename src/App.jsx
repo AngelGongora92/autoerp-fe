@@ -33,11 +33,11 @@ function App() {
   return (
   <div className="App">
     <BrowserRouter>
-      <Layout style={{ minHeight: '100vh' }}>
+      <Layout style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <Header style={{ padding: 0, height: 'auto', lineHeight: 'normal', background: 'transparent' }}>
           <AppHeader collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} showMenuButtonAnimation={showMenuButtonAnimation} />
         </Header>
-        <Layout>
+        <Layout style={{ flexGrow: 1, flexShrink: 0, display: 'flex', flexDirection: 'row' }}> {/* Este Layout intermedio debe crecer verticalmente */}
           <Sider 
           width={160} 
           theme="light" 
@@ -51,13 +51,13 @@ function App() {
             {/* Pasa la prop onClose a SideMenu para que pueda controlar la visibilidad */}
             <SideMenu onClose={() => setCollapsed(true)} />
           </Sider>
-          <Content style={{ margin: 'auto' }}>
+          <Content style={{ flexGrow: 1, flexShrink: 0, padding: '24px' }}> {/* El Content debe crecer horizontalmente */}
             <PageContent>
               <AppRoutes />
             </PageContent>
           </Content>
         </Layout>
-        <Footer style={{ textAlign: 'center', padding: '10px 50px' }}>
+        <Footer style={{ textAlign: 'center', padding: '10px 50px', flexShrink: 0 }}>
           <AppFooter />
         </Footer>
       </Layout>

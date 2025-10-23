@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button, message, Steps, Card, Spin } from 'antd';
 import { Link } from 'react-router-dom';
 import { ArrowLeftOutlined } from '@ant-design/icons';
@@ -18,10 +18,25 @@ const steps = [
 const NewOrderPage = () => {
   const [current, setCurrent] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [isStepThreeLastView, setIsStepThreeLastView] = useState(false);
   const [orderData, setOrderData] = useState(null); // Estado para guardar la orden
   const stepOneRef = useRef(null);
   const stepTwoRef = useRef(null); // Referencia para el Paso 2
   const stepThreeRef = useRef(null); // Referencia para el Paso 3
+
+  useEffect(() => {
+    if (current === 2) {
+      // Cuando entramos al paso 3, verificamos si ya estamos en la última vista.
+      // Usamos un timeout para asegurarnos que el ref del hijo esté disponible.
+      setTimeout(() => {
+        setIsStepThreeLastView(stepThreeRef.current?.isLastView ?? false);
+      }, 0);
+    }
+  }, [current]);
+
+  const handleStepThreeViewChange = (isLast) => {
+    setIsStepThreeLastView(isLast);
+  };
 
   const next = async () => {
     // Si estamos en el primer paso, validamos el formulario del StepOne
@@ -53,23 +68,43 @@ const NewOrderPage = () => {
       }
     } else if (current === 2) {
       setLoading(true);
-      try {
-        const updatedOrder = await stepThreeRef.current.submitStep();
-        setOrderData(updatedOrder);
-        message.success('Paso 3 completado. Avanzando...');
-        setCurrent(3);
-      } catch (error) {
-        console.error('Fallo en el paso 3:', error);
-      } finally {
-        setLoading(false);
+      // El paso 3 ahora tiene su propia navegación interna.
+      // Llamamos a `handleNextView` que nos dirá si ya podemos avanzar al siguiente paso.
+      const canAdvance = await stepThreeRef.current.handleNextView();
+      setIsStepThreeLastView(stepThreeRef.current?.isLastView ?? false);
+      setLoading(false); // `handleNextView` tiene su propio spinner, así que quitamos el del botón principal.
+      
+      if (canAdvance) {
+        try {
+          // Si ya no hay más vistas, obtenemos los datos finales.
+          const updatedOrder = await stepThreeRef.current.submitStep();
+          setOrderData(updatedOrder);
+          message.success('Inventario de carrocería completado. Avanzando...');
+          setCurrent(3);
+        } catch (error) {
+          console.error('Fallo al finalizar el paso 3:', error);
+        }
       }
     } else {
       setCurrent(current + 1); // Para otros pasos, solo avanzamos
     }
   };
 
-  const prev = () => {
-    setCurrent(current - 1);
+  const prev = async () => {
+    if (current === 2) {
+      setLoading(true);
+      try {
+        // Guardamos los puntos de la vista actual antes de retroceder
+        await stepThreeRef.current.saveCurrentViewPoints();
+        setCurrent(current - 1);
+      } catch (error) {
+        console.error("Error al guardar antes de retroceder:", error);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setCurrent(current - 1);
+    }
   };
 
   const items = steps.map((item) => ({
@@ -102,13 +137,13 @@ const NewOrderPage = () => {
       <div style={contentStyle}>
         {current === 0 && <StepOne ref={stepOneRef} />}
         {current === 1 && <StepTwo ref={stepTwoRef} orderData={orderData} />}
-        {current === 2 && <StepThree ref={stepThreeRef} orderData={orderData} />}
+        {current === 2 && <StepThree ref={stepThreeRef} orderData={orderData} onViewChange={handleStepThreeViewChange} />}
         {current === 3 && <h2>Paso 4: Resumen y Finalización</h2>}
       </div>
 
       <div style={{ marginTop: '24px', textAlign: 'right' }}>
         {current > 0 && (
-          <Button style={{ margin: '0 8px' }} onClick={() => prev()} disabled={loading}>
+          <Button style={{ margin: '0 8px' }} onClick={prev} loading={loading} disabled={loading}>
             Anterior
           </Button>
         )}
@@ -117,7 +152,7 @@ const NewOrderPage = () => {
             type="primary" 
             onClick={next} 
             loading={loading} // Muestra un estado de carga
-            disabled={loading}
+            disabled={loading || (current === 2 && !isStepThreeLastView)}
           >
             Siguiente
           </Button>
