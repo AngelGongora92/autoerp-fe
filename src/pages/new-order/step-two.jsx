@@ -271,138 +271,133 @@ const StepTwo = forwardRef(({ orderData }, ref) => {
 
       <Form form={form} layout="horizontal" labelCol={{ span: 8 }} wrapperCol={{ span: 16 }}>
         <Row gutter={24}>
-          <Col span={12}>
-              <Form.Item
-                label="Vehículo"
-                name="vehicle"
-                rules={[{ required: true, message: 'Por favor, seleccione un vehículo' }]}
-                labelCol={{ span: 4 }} // Ajuste específico para este campo
-                wrapperCol={{ span: 20 }} // Ajuste específico para este campo
-              >
-                <Space.Compact style={{ width: '100%' }}>
-                  <Select
-                    style={{ width: '100%' }}
-                    loading={vehicleLoading}
-                    options={vehicleOptions}
-                    disabled={!orderData || vehicleLoading}
-                    placeholder={getPlaceholder()}
-                    notFoundContent={vehicleLoading ? <Spin size="small" /> : null}
-                    onSelect={onVehicleSelect}
-                    onChange={onVehicleChange}
-                    allowClear
-                  />
-                  <Button icon={<PlusOutlined />} disabled={!orderData} onClick={() => setIsVehicleModalOpen(true)} />
-                </Space.Compact>
-              </Form.Item>
-              
-              {selectedVehicleInfo && (
-                <Card title="Información del Vehículo" bordered={false} style={{ marginTop: 16, backgroundColor: '#FAFAFA' }}>
-                  <Row gutter={16}>
-                    <Col span={12}>
-                    <p><Text strong>Marca:</Text> {selectedVehicleInfo.model?.make?.make || 'N/A'}</p>
-                    <p><Text strong>Modelo:</Text> {selectedVehicleInfo.model?.model || 'N/A'}</p>
-                    <p><Text strong>Año:</Text> {selectedVehicleInfo.year || 'N/A'}</p>
-                    <p><Text strong>VIN:</Text> {selectedVehicleInfo.vin || 'N/A'}</p>
-                    <p><Text strong>Placas:</Text> {selectedVehicleInfo.plate || 'N/A'}</p>
-                    <p><Text strong>KM:</Text> {selectedVehicleInfo.mileage || 'N/A'}</p>
-                    <p><Text strong>Tipo:</Text> {selectedVehicleInfo.vehicle_type?.type || 'N/A'}</p>
-                    </Col>
-                    <Col span={12}>
-                    <p><Text strong>Color:</Text> {selectedVehicleInfo.color?.color || 'N/A'}</p>
-                    <p><Text strong>Motor:</Text> {selectedVehicleInfo.motor?.type || 'N/A'}</p>
-                    <p><Text strong>Transmisión:</Text> {selectedVehicleInfo.transmission?.type || 'N/A'}</p>
-                    <p><Text strong>Cilindros:</Text> {selectedVehicleInfo.cylinders || 'N/A'}</p>
-                    <p><Text strong>Litros:</Text> {selectedVehicleInfo.liters || 'N/A'}</p>
-                    </Col>
-                  </Row>
-                </Card>
-              )}
-          </Col>
-          <Col span={12}>
+          {/* Bloque del Vehículo */}
+          <Col xs={24} md={12} order={{ xs: 1, md: 1 }}>
+            <Form.Item
+              label="Vehículo"
+              name="vehicle"
+              rules={[{ required: true, message: 'Por favor, seleccione un vehículo' }]}
+              labelCol={{ span: 24 }} // Full width label on mobile
+              wrapperCol={{ span: 24 }} // Full width input on mobile
+            >
+              <Space.Compact style={{ width: '100%' }}>
+                <Select
+                  style={{ width: '100%' }}
+                  loading={vehicleLoading}
+                  options={vehicleOptions}
+                  disabled={!orderData || vehicleLoading}
+                  placeholder={getPlaceholder()}
+                  notFoundContent={vehicleLoading ? <Spin size="small" /> : null}
+                  onSelect={onVehicleSelect}
+                  onChange={onVehicleChange}
+                  allowClear
+                />
+                <Button icon={<PlusOutlined />} disabled={!orderData} onClick={() => setIsVehicleModalOpen(true)} />
+              </Space.Compact>
+            </Form.Item>
+            
             {selectedVehicleInfo && (
-              <>
-                <Form.Item
-                  label={selectedVehicleInfo.motor?.type === 'electrico' ? 'Nivel de Carga' : 'Nivel de Combustible'}
-                  name="fuel_level"
-                  initialValue={50}
-                  labelCol={{ span: 24 }}
-                  wrapperCol={{ span: 24 }}
-                  style={{ marginBottom: 0 }}
-                >
-                  <Form.Item noStyle dependencies={['fuel_level']}>
-                    {({ getFieldValue }) => {
-                      const inputValue = getFieldValue('fuel_level');
-                      const isElectric = selectedVehicleInfo.motor?.type === 'electrico';
-                      if (isElectric) {
+              <Card title="Información del Vehículo" bordered={false} style={{ marginTop: 16, backgroundColor: '#FAFAFA' }}>
+                <Row gutter={16}>
+                  <Col xs={24} sm={12}>
+                  <p><Text strong>Marca:</Text> {selectedVehicleInfo.model?.make?.make || 'N/A'}</p>
+                  <p><Text strong>Modelo:</Text> {selectedVehicleInfo.model?.model || 'N/A'}</p>
+                  <p><Text strong>Año:</Text> {selectedVehicleInfo.year || 'N/A'}</p>
+                  <p><Text strong>VIN:</Text> {selectedVehicleInfo.vin || 'N/A'}</p>
+                  <p><Text strong>Placas:</Text> {selectedVehicleInfo.plate || 'N/A'}</p>
+                  <p><Text strong>KM:</Text> {selectedVehicleInfo.mileage || 'N/A'}</p>
+                  <p><Text strong>Tipo:</Text> {selectedVehicleInfo.vehicle_type?.type || 'N/A'}</p>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                  <p><Text strong>Color:</Text> {selectedVehicleInfo.color?.color || 'N/A'}</p>
+                  <p><Text strong>Motor:</Text> {selectedVehicleInfo.motor?.type || 'N/A'}</p>
+                  <p><Text strong>Transmisión:</Text> {selectedVehicleInfo.transmission?.type || 'N/A'}</p>
+                  <p><Text strong>Cilindros:</Text> {selectedVehicleInfo.cylinders || 'N/A'}</p>
+                  <p><Text strong>Litros:</Text> {selectedVehicleInfo.liters || 'N/A'}</p>
+                  </Col>
+                </Row>
+              </Card>
+            )}
+          </Col>
+
+          {/* Columna contenedora para los campos de la derecha */}
+          <Col xs={24} md={12} order={{ xs: 2, md: 2 }}>
+            <Row>
+              {/* Bloque de Combustible/Carga */}
+              <Col span={24} order={{ xs: 2, md: 1 }}>
+                {selectedVehicleInfo && (
+                  <Form.Item
+                    label={selectedVehicleInfo.motor?.type === 'electrico' ? 'Nivel de Carga' : 'Nivel de Combustible'}
+                    name="fuel_level"
+                    initialValue={50}
+                    labelCol={{ span: 24 }}
+                    wrapperCol={{ span: 24 }}
+                    style={{ marginBottom: 24 }}
+                  >
+                    <Form.Item noStyle dependencies={['fuel_level']}>
+                      {({ getFieldValue }) => {
+                        const inputValue = getFieldValue('fuel_level');
+                        const isElectric = selectedVehicleInfo.motor?.type === 'electrico';
+                        if (isElectric) {
+                          return (
+                            <Row align="middle" gutter={16}>
+                              <Col xs={24} md={18} order={{ xs: 1, md: 1 }}>
+                                <Slider tooltip={{ open: false }} min={0} max={100} value={inputValue} onChange={(val) => form.setFieldsValue({ fuel_level: val })} />
+                              </Col>
+                              <Col xs={24} md={6} order={{ xs: 2, md: 2 }}>
+                                <InputNumber min={0} max={100} addonAfter="%" value={inputValue} onChange={(val) => form.setFieldsValue({ fuel_level: val })} />
+                              </Col>
+                            </Row>
+                          );
+                        }
                         return (
-                          <Row align="middle" gutter={16}>
-                            <Col span={18}>
-                              <Slider tooltip={{ open: false }} min={0} max={100} value={inputValue} onChange={(val) => form.setFieldsValue({ fuel_level: val })} />
-                            </Col>
-                            <Col span={6}>
-                              <InputNumber
-                                min={0}
-                                max={100}
-                                style={{ width: '100%' }}
-                                addonAfter="%"
-                                value={inputValue}
-                                onChange={(val) => form.setFieldsValue({ fuel_level: val })}
-                              />
+                          <Row>
+                            <Col span={24} style={{paddingRight: '15px'}}>
+                              <Slider marks={fuelMarks} tooltip={{ open: false }} step={12.5} value={inputValue} onChange={(val) => form.setFieldsValue({ fuel_level: val })} />
                             </Col>
                           </Row>
                         );
-                      }
-                      // Lógica para combustible normal
-                      return (
-                        <Row>
-                          <Col span={18}>
-                            <Slider marks={fuelMarks} tooltip={{ open: false }} step={12.5} value={inputValue} onChange={(val) => form.setFieldsValue({ fuel_level: val })} />
-                          </Col>
-                        </Row>
-                      );
-                    }}
-                  </Form.Item>
-                </Form.Item>
-                <div style={{ height: '24px' }} /> {/* Espacio para alinear con el siguiente campo */}
-              </>
-            )}
-            <Form.Item
-              label="Kilometraje Actual"
-              name="current_mileage"
-            >
-              <Input type="number" addonAfter="km" style={{ width: '50%' }} />
-            </Form.Item>
-
-            <Collapse
-              ghost
-              activeKey={activeCollapseKey}
-              onChange={(keys) => setActiveCollapseKey(keys)}
-              items={[{
-                key: '1',
-                label: 'Informacion extra',
-                children: extraItemsLoading ? (
-                  <Spin tip="Cargando ítems..." />
-                ) : (
-                  extraItems.map(item => (
-                    <Form.Item
-                      key={item.item_id}
-                      name={['extra_items', item.item_id]}
-                      label={
-                        <span>
-                          {item.title}
-                          <Tooltip title={item.description} placement="right">
-                            <QuestionCircleOutlined style={{ marginLeft: 8, color: 'rgba(0, 0, 0, 0.45)' }} />
-                          </Tooltip>
-                        </span>
-                      }
-                      style={{ marginBottom: 8 }}
-                    >
-                      <Input placeholder={`Ingrese ${item.title.toLowerCase()}`} />
+                      }}
                     </Form.Item>
-                  ))
-                ),
-              }]}
-            />
+                  </Form.Item>
+                )}
+              </Col>
+
+              {/* Bloque de Kilometraje */}
+              <Col span={24} order={{ xs: 3, md: 2 }}>
+                <Form.Item label="Kilometraje Actual" name="current_mileage" labelCol={{ span: 24 }} wrapperCol={{ span: 24 }}>
+                  <Input type="number" addonAfter="km" style={{ width: '100%', maxWidth: '250px' }} />
+                </Form.Item>
+              </Col>
+
+              {/* Bloque de Información Extra */}
+              <Col span={24} order={{ xs: 4, md: 3 }}>
+                <Collapse
+                  ghost
+                  activeKey={activeCollapseKey}
+                  onChange={(keys) => setActiveCollapseKey(keys)}
+                  items={[{
+                    key: '1',
+                    label: 'Informacion extra',
+                    children: extraItemsLoading ? (
+                      <Spin tip="Cargando ítems..." />
+                    ) : (
+                      extraItems.map(item => (
+                        <Form.Item
+                          key={item.item_id}
+                          name={['extra_items', item.item_id]}
+                          label={<span>{item.title}<Tooltip title={item.description} placement="right"><QuestionCircleOutlined style={{ marginLeft: 8, color: 'rgba(0, 0, 0, 0.45)' }} /></Tooltip></span>}
+                          style={{ marginBottom: 8 }}
+                          labelCol={{ span: 24 }} wrapperCol={{ span: 24 }}
+                        >
+                          <Input placeholder={`Ingrese ${item.title.toLowerCase()}`} />
+                        </Form.Item>
+                      ))
+                    ),
+                  }]}
+                />
+              </Col>
+            </Row>
           </Col>
         </Row>
       </Form>
