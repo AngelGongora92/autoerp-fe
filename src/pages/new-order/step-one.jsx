@@ -382,134 +382,107 @@ const StepOne = forwardRef((props, ref) => {
       initialValues={{ orderDateTime: dayjs() }}
     >
       <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            label="Fecha y Hora de la Orden"
-            name="orderDateTime"
-            rules={[{ required: true, message: 'Por favor, seleccione la fecha y hora' }]}
-          >
-            <DatePicker 
-              showTime 
-              placeholder="Seleccione fecha y hora" 
-              style={{ width: '50%' }} 
-              format="YYYY-MM-DD HH:mm" 
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="Asesor"
-            name="advisor"
-            rules={[{ required: true, message: 'Por favor, seleccione un asesor' }]}
-          >
-            <Select
-              style={{ width: '50%' }}
-              loading={advisorLoading}
-              options={advisorOptions}
-              placeholder="Seleccionar asesor"
-              disabled={advisorLoading}
-              allowClear
-            />
-          </Form.Item>
-
-          <Form.Item 
-            label="Cliente" 
-            name="customer"
-            rules={[{ required: true, message: 'Por favor, busque y seleccione un cliente' }]}
-          >
-            <Space.Compact style={{ width: '50%' }}>
-              <AutoComplete
-                value={customerSearchValue}
-                style={{ width: '100%' }}
-                options={options}
-                onSelect={onCustomerSelect}
-                onSearch={searchCustomers}
-                onChange={onCustomerChange}
-                placeholder="Escribe para buscar un cliente..."
-                debounce={300}
-                notFoundContent={loading ? <Spin size="small" /> : null}
-              />
-              <Button icon={<PlusOutlined />} onClick={openCreateCustomerModal} />
-            </Space.Compact>
-          </Form.Item>
-          {selectedCustomer && (
-        <Card title="Información del Cliente Seleccionado" bordered={false} style={{ marginTop: 16, backgroundColor: '#FAFAFA' }}>
-          <p><Text strong>Nombre:</Text> {selectedCustomer.label || 'N/A'}</p>
-          <p><Text strong>Email:</Text> {selectedCustomer.email || 'N/A'}</p>
-          <p><Text strong>Dirección:</Text> {`${selectedCustomer.address1 || ''} ${selectedCustomer.address2 || ''}`.trim() || 'N/A'}</p>
-          <p><Text strong>Teléfono:</Text> {selectedCustomer.phone || 'N/A'}</p>
-        </Card>
-      )}
+        {/* Orden en móvil: 1, Orden en desktop: 1 */}
+        <Col xs={24} md={12} order={{ xs: 1, md: 1 }}>
+            <Form.Item label="Fecha y Hora de la Orden" name="orderDateTime" rules={[{ required: true, message: 'Por favor, seleccione la fecha y hora' }]}>
+                <DatePicker showTime placeholder="Seleccione fecha y hora" style={{ width: '100%' }} format="YYYY-MM-DD HH:mm" />
+            </Form.Item>
         </Col>
 
-        <Col span={12}>
-          <Form.Item
-            label="Folio"
-            name="folio"
-            rules={[
-              { required: true, message: 'Por favor, ingrese el folio' },
-              { validator: validateFolio, validateTrigger: 'onBlur' }
-            ]}  
-            extra={
-              folioLoading ? 
-              <Spin size="small" /> : 
-              lastFolio ? 
-              `Último folio creado: ${lastFolio}` : 
-              'No se encontró un folio anterior.'
-            }
-          >
-            <Input placeholder="Ingrese el folio" style={{ width: '50%' }} allowClear />
-          </Form.Item>
+        {/* Orden en móvil: 2, Orden en desktop: 2 */}
+        <Col xs={24} md={12} order={{ xs: 2, md: 2 }}>
+            <Form.Item
+                label="Folio"
+                name="folio"
+                rules={[{ required: true, message: 'Por favor, ingrese el folio' }, { validator: validateFolio, validateTrigger: 'onBlur' }]}
+                extra={folioLoading ? <Spin size="small" /> : lastFolio ? `Último folio creado: ${lastFolio}` : 'No se encontró un folio anterior.'}
+            >
+                <Input placeholder="Ingrese el folio" style={{ width: '100%' }} allowClear />
+            </Form.Item>
+        </Col>
 
-          <Form.Item
-            label="Técnico"
-            name="technician"
-            rules={[{ required: true, message: 'Por favor, seleccione un técnico' }]}
-          >
-            <Select
-              style={{ width: '50%' }}
-              loading={technicianLoading}
-              options={technicianOptions}
-              placeholder="Seleccionar técnico"
-              disabled={technicianLoading}
-              allowClear
-            />
-          </Form.Item>
+        {/* Orden en móvil: 3, Orden en desktop: 3 */}
+        <Col xs={24} md={12} order={{ xs: 3, md: 3 }}>
+            <Form.Item label="Asesor" name="advisor" rules={[{ required: true, message: 'Por favor, seleccione un asesor' }]}>
+                <Select
+                    style={{ width: '100%' }}
+                    loading={advisorLoading}
+                    options={advisorOptions}
+                    placeholder="Seleccionar asesor"
+                    disabled={advisorLoading}
+                    allowClear
+                />
+            </Form.Item>
+        </Col>
 
-          <Form.Item
-            label="Contacto"
-            name="contact"
-            rules={[{ required: true, message: 'Por favor, seleccione un contacto' }]}
-          >
-            <Space.Compact style={{ width: '50%' }}>
-              <Select
-                value={contactValue}
-                // Forzar el re-montaje del componente cuando el cliente cambia.
-                key={selectedCustomer?.customer_id}
-                style={{ width: '100%' }}
-                loading={contactLoading}
-                options={contactOptions}
-                disabled={!selectedCustomer}
-                placeholder={
-                  !selectedCustomer ? "Seleccione un cliente primero" : "Seleccionar contacto"
-                }
-                onChange={handleContactChange}
-                allowClear
-                notFoundContent={contactLoading ? <Spin size="small" /> : 'Sin contactos'}
-              />
-              <Button 
-                icon={<PlusOutlined />} 
-                disabled={!selectedCustomer} 
-                onClick={openCreateContactModal} 
-              />
-            </Space.Compact>
-          </Form.Item>
-          {selectedContact && selectedContactValue && (
-            <Card title="Información del Contacto" bordered={false} style={{ marginTop: 16, backgroundColor: '#FAFAFA', width: '50%' }}>
-              <p><Text strong>Nombre:</Text> {selectedContact.label || 'N/A'}</p>
-              <p><Text strong>Email:</Text> {selectedContact.email || 'N/A'}</p>
-              <p><Text strong>Teléfono:</Text> {selectedContact.phone || 'N/A'}</p>
-            </Card>
-          )}
+        {/* Orden en móvil: 4, Orden en desktop: 4 */}
+        <Col xs={24} md={12} order={{ xs: 4, md: 4 }}>
+            <Form.Item label="Técnico" name="technician" rules={[{ required: true, message: 'Por favor, seleccione un técnico' }]}>
+                <Select
+                    style={{ width: '100%' }}
+                    loading={technicianLoading}
+                    options={technicianOptions}
+                    placeholder="Seleccionar técnico"
+                    disabled={technicianLoading}
+                    allowClear
+                />
+            </Form.Item>
+        </Col>
+
+        {/* Orden en móvil: 5, Orden en desktop: 5 */}
+        <Col xs={24} md={12} order={{ xs: 5, md: 5 }}>
+            <Form.Item label="Cliente" name="customer" rules={[{ required: true, message: 'Por favor, busque y seleccione un cliente' }]}>
+                <Space.Compact style={{ width: '100%' }}>
+                    <AutoComplete
+                        value={customerSearchValue}
+                        style={{ width: '100%' }}
+                        options={options}
+                        onSelect={onCustomerSelect}
+                        onSearch={searchCustomers}
+                        onChange={onCustomerChange}
+                        placeholder="Escribe para buscar un cliente..."
+                        debounce={300}
+                        notFoundContent={loading ? <Spin size="small" /> : null}
+                    />
+                    <Button icon={<PlusOutlined />} onClick={openCreateCustomerModal} />
+                </Space.Compact>
+            </Form.Item>
+            {selectedCustomer && (
+                <Card title="Información del Cliente Seleccionado" bordered={false} style={{ marginTop: 16, backgroundColor: '#FAFAFA' }}>
+                    <p><Text strong>Nombre:</Text> {selectedCustomer.label || 'N/A'}</p>
+                    <p><Text strong>Email:</Text> {selectedCustomer.email || 'N/A'}</p>
+                    <p><Text strong>Dirección:</Text> {`${selectedCustomer.address1 || ''} ${selectedCustomer.address2 || ''}`.trim() || 'N/A'}</p>
+                    <p><Text strong>Teléfono:</Text> {selectedCustomer.phone || 'N/A'}</p>
+                </Card>
+            )}
+        </Col>
+
+        {/* Orden en móvil: 6, Orden en desktop: 6 */}
+        <Col xs={24} md={12} order={{ xs: 6, md: 6 }}>
+            <Form.Item label="Contacto" name="contact" rules={[{ required: true, message: 'Por favor, seleccione un contacto' }]}>
+                <Space.Compact style={{ width: '100%' }}>
+                    <Select
+                        value={contactValue}
+                        key={selectedCustomer?.customer_id}
+                        style={{ width: '100%' }}
+                        loading={contactLoading}
+                        options={contactOptions}
+                        disabled={!selectedCustomer}
+                        placeholder={!selectedCustomer ? "Seleccione un cliente primero" : "Seleccionar contacto"}
+                        onChange={handleContactChange}
+                        allowClear
+                        notFoundContent={contactLoading ? <Spin size="small" /> : 'Sin contactos'}
+                    />
+                    <Button icon={<PlusOutlined />} disabled={!selectedCustomer} onClick={openCreateContactModal} />
+                </Space.Compact>
+            </Form.Item>
+            {selectedContact && selectedContactValue && (
+                <Card title="Información del Contacto" bordered={false} style={{ marginTop: 16, backgroundColor: '#FAFAFA' }}>
+                    <p><Text strong>Nombre:</Text> {selectedContact.label || 'N/A'}</p>
+                    <p><Text strong>Email:</Text> {selectedContact.email || 'N/A'}</p>
+                    <p><Text strong>Teléfono:</Text> {selectedContact.phone || 'N/A'}</p>
+                </Card>
+            )}
         </Col>
       </Row>
       

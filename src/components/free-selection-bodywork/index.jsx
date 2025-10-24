@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase'; // Importamos el cliente de Supab
 const { Option } = Select;
 
 // Este es el componente para el checklist visual de selección libre
-const FreeSelectionBodywork = ({ imageSrc, points, setPoints, damageTypes, loadingTypes, orderId, viewKey, onRemovePoint }) => {
+const FreeSelectionBodywork = ({ imageSrc, points, setPoints, damageTypes, orderId, viewKey, onRemovePoint }) => {
   const svgRef = useRef(null);
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
@@ -250,13 +250,12 @@ const FreeSelectionBodywork = ({ imageSrc, points, setPoints, damageTypes, loadi
               <Row gutter={[8, 8]} align="middle">
                 <Col flex="150px">
                   <Select
-                    placeholder={loadingTypes ? "Cargando..." : "Seleccionar"}
+                    placeholder={"Seleccionar"}
                     value={point.type}
                     style={{ width: '100%' }}
                     onChange={(value) => handleUpdatePoint(index, { type: value })}
                     onClick={(e) => e.stopPropagation()}
                     allowClear
-                    loading={loadingTypes}
                   >
                     {damageTypes.map(dt => (
                       <Option key={dt.detail_type_id} value={dt.detail_type_id}>{dt.type}</Option>
