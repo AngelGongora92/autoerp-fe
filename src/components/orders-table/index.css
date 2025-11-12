@@ -1,0 +1,5 @@
+
+.ant-table-tbody > .ant-table-row.selected-row > td,
+.ant-table-tbody > .ant-table-row.selected-row:hover > td {
+    background: #e6f4ff !important; /* Azul claro de Ant Design para la selección */
+}

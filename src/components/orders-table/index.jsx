@@ -4,8 +4,9 @@ import { Link } from 'react-router-dom';
 import OrderDrawer from '../order-drawer'; // Importamos el drawer
 import { useMediaQuery } from 'react-responsive';
 import dayjs from 'dayjs';
+import './index.css';
 
-const columnsConfig = (handleViewOrder, customerMap, employeeMap) => [
+const columnsConfig = (customerMap, employeeMap) => [
     {
         title: 'Folio', 
         dataIndex: 'c_order_id', 
@@ -47,17 +48,14 @@ const columnsConfig = (handleViewOrder, customerMap, employeeMap) => [
         dataIndex: 'op_status_id', 
         key: 'op_status_id', 
         align: 'center',
-        render: (status) => status ? <Tag color="processing">{`Estatus ${status}`}</Tag> : <Tag>N/A</Tag>
-    },
-    { 
-        title: 'Acciones', 
-        key: 'actions', 
-        align: 'center', 
-        render: (_, record) => (
-            <Space size="middle">
-              <Button type="primary" ghost onClick={() => handleViewOrder(record)}>Ver / Editar</Button>
-            </Space>
-        )
+        render: (statusId) => {
+            if (statusId === 1) {
+                return <Tag color="orange">Incompleto</Tag>;
+            } else if (statusId === 2) {
+                return <Tag color="blue">Abierto</Tag>;
+            }
+            return statusId ? <Tag color="default">{`Estatus ${statusId}`}</Tag> : <Tag>N/A</Tag>;
+        }
     },
 ];
 
@@ -87,6 +85,7 @@ function OrdersTable() {
   // Función para cerrar el drawer
   const handleCloseDrawer = () => {
     setIsDrawerOpen(false);
+    setSelectedOrder(null); // Limpiamos la orden seleccionada para quitar el resaltado
   };
   
   useEffect(() => {
@@ -112,7 +111,10 @@ function OrdersTable() {
           techniciansRes.json(),
         ]);
 
-        setOrders(ordersData);
+        // Ordenamos las órdenes de la más reciente a la más antigua por order_id
+        const sortedOrders = ordersData.sort((a, b) => b.order_id - a.order_id);
+
+        setOrders(sortedOrders);
         setCustomers(customersData);
         setAdvisors(advisorsData);
         setTechnicians(techniciansData);
@@ -143,13 +145,14 @@ function OrdersTable() {
   }, [advisors, technicians]);
 
   const columns = useMemo(
-    () => columnsConfig(handleViewOrder, customerMap, employeeMap), 
-    [customerMap, employeeMap]
+    () => columnsConfig(customerMap, employeeMap),
+    [customerMap, employeeMap] // handleViewOrder ya no es necesario aquí
   );
 
   const filteredOrders = useMemo(() => 
     orders.filter(order =>
-      order.c_order_id && order.c_order_id.toLowerCase().includes(searchText.toLowerCase())
+      (order.c_order_id && order.c_order_id.toLowerCase().includes(searchText.toLowerCase())) ||
+      (customerMap.get(order.customer_id) && customerMap.get(order.customer_id).toLowerCase().includes(searchText.toLowerCase()))
   ), [orders, searchText]);
 
   if (error) return <div>Error al cargar los datos: {error.message}</div>;
@@ -157,14 +160,13 @@ function OrdersTable() {
 
   return (
     <div style={{ padding: '10px' }}>
-      
-      <h2>Órdenes de Servicio</h2>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <Input
-          placeholder="Buscar por folio..."
+          placeholder="Buscar por folio o cliente..."
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
           style={{ width: 240 }}
+          allowClear
         />
         <Link to="/new-order">
           <Button type="primary">
@@ -181,6 +183,15 @@ function OrdersTable() {
         pagination={{ pageSize: 10, position: ['bottomCenter'] }}
         // Hacemos que la tabla sea desplazable horizontalmente solo en móvil
         scroll={isMobile ? { x: 'max-content' } : undefined}
+        rowClassName={(record) => 
+          record.order_id === selectedOrder?.order_id ? 'selected-row' : ''
+        }
+        onRow={(record) => {
+          return {
+            onClick: () => handleViewOrder(record), // Llama a la función al hacer clic
+            style: { cursor: 'pointer' } // Cambia el cursor para indicar que la fila es clickeable
+          };
+        }}
       />
 
       {/* El drawer se renderiza aquí, pero solo es visible cuando 'open' es true */}

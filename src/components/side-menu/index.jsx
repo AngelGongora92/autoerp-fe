@@ -53,9 +53,10 @@ function SideMenu({ onClose = () => {} }) {
           }
         }}
         items={[
-        { label: 'Auth', icon: <UserOutlined />, key: 'auth',
+        { label: 'Admin', icon: <UserOutlined />, key: 'auth',
           children: [
             { label: 'Usuarios', icon: <SwapRightOutlined />, key: 'users' },
+            { label: 'Inventarios', icon: <SwapRightOutlined />, key: 'orders-inventories' }, // This is already correct
             
           ]
          },
