@@ -1,136 +1,144 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
-import { Form, message, Typography, Progress, Button, Space, Spin } from 'antd';
-import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
-import { useBodyworkInventory } from '../../hooks/useBodyworkInventory';
-import FreeSelectionBodywork from '../../components/free-selection-bodywork' // Importamos el nuevo componente
+import { Form, message, Typography, Progress, Button, Space, Spin, Result } from 'antd';
+import BodyworkInventory from '../../components/bodywork-inventory';
+import GenericInventory from '../../components/generic-inventory';
 
-const { Title, Paragraph } = Typography;
-
-// Definimos las vistas de la carrocería
-const bodyViews = [
-  { key: 'front', title: 'Vista Frontal', image: '/sedan-front.png' },
-  { key: 'right', title: 'Lateral Derecho', image: '/sedan-right.png' },
-  { key: 'back', title: 'Vista Trasera', image: '/sedan-back.png' },
-  { key: 'left', title: 'Lateral Izquierdo', image: '/sedan-left.png' },
-  { key: 'up', title: 'Vista Superior', image: '/sedan-up.png' },
-];
-
-const StepThree = forwardRef(({ orderData, onViewChange }, ref) => {
+const StepThree = forwardRef(({ orderData, onCompletionChange }, ref) => {
   const [form] = Form.useForm();
-  const [currentViewIndex, setCurrentViewIndex] = useState(0);
-  const [isLastView, setIsLastView] = useState(false);
+  const apiUrl = import.meta.env.VITE_API_URL;
 
-  const currentView = bodyViews[currentViewIndex];
-  const progressPercent = ((currentViewIndex + 1) / bodyViews.length) * 100;
+  const [activeInventories, setActiveInventories] = useState([]);
+  const [currentInventoryIndex, setCurrentInventoryIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const [isCurrentInventoryComplete, setIsCurrentInventoryComplete] = useState(false);
 
-  // Usamos nuestro nuevo hook para manejar la lógica del inventario
-  const { pointsByView, setPointsByView, damageTypes, isLoading, isSaving, saveViewPoints } = useBodyworkInventory(orderData?.order_id);
+  // Usamos un ref mutable para almacenar la instancia del componente hijo.
+  // Esto evita problemas de "stale closure" con la referencia.
+  const inventoryRef = useRef(null); 
+  const setInventoryRef = (node) => { inventoryRef.current = node; };
 
   useEffect(() => {
-    // Actualizamos si es la última vista cada vez que el índice cambia.
-    setIsLastView(currentViewIndex === bodyViews.length - 1);
-    if (onViewChange) {
-      onViewChange(currentViewIndex === bodyViews.length - 1);
+    const fetchInventoryTypes = async () => {
+      setIsLoading(true);
+      try {
+        // Actualizamos el endpoint para que coincida con tu API
+        const response = await fetch(`${apiUrl}/orders/inventory-types/`);
+        if (!response.ok) throw new Error('No se pudieron cargar los tipos de inventario.');
+        const data = await response.json();
+
+        // Filtramos para mostrar solo los inventarios activos
+        const activeOnlyInventories = data.filter(inv => inv.is_active);
+        setActiveInventories(activeOnlyInventories);
+      } catch (error) {
+        message.error(error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchInventoryTypes();
+  }, [apiUrl]);
+
+  const isLastInventory = currentInventoryIndex === activeInventories.length - 1;
+  const progressPercent = activeInventories.length > 0 ? ((currentInventoryIndex + 1) / activeInventories.length) * 100 : 0;
+
+  useEffect(() => {
+    // Solo llamamos a onCompletionChange si hay inventarios activos.
+    if (onCompletionChange && activeInventories.length > 0) {
+      // El paso se considera completo tan pronto como se llega al último inventario.
+      const isStepComplete = isLastInventory;
+      onCompletionChange(isStepComplete);
     }
-  }, [currentViewIndex]);
+  }, [isLastInventory, onCompletionChange, activeInventories.length]);
+
+  // Efecto para reiniciar el estado de completado cuando el inventario cambia.
+  // Esto asegura que el nuevo inventario pueda reportar su propio estado de completado.
+  useEffect(() => {
+    setIsCurrentInventoryComplete(false);
+  }, [currentInventoryIndex]);
+
+  const saveCurrentInventory = async () => {
+    if (inventoryRef.current?.saveStep) {
+      return await inventoryRef.current.saveStep();
+    }
+    return false; // Si no hay ref o función, el guardado falla.
+  };
 
   useImperativeHandle(ref, () => ({
-    // Exponemos el estado para que el padre sepa si es la última vista
-    get isLastView() {
-      return currentViewIndex === bodyViews.length - 1;
-    },
-    // Exponemos la función de guardado para que el padre la pueda llamar
-    saveCurrentViewPoints: () => saveViewPoints(currentView.key),
-    // Nueva función para que el padre controle la navegación de vistas
-    handleNextView: async () => {
-      // Guardamos la vista actual antes de intentar avanzar
-      const saved = await saveViewPoints(currentView.key);
-      if (!saved) return false; // Si no se pudo guardar, no avanzamos
-
-      if (currentViewIndex < bodyViews.length - 1) {
-        setCurrentViewIndex(prev => prev + 1);
-        return false; // Indicamos que aún no se puede avanzar al siguiente paso
-      }
-      return true; // Indicamos que es la última vista y se puede avanzar
-    },
-    // Esta función ahora solo se usa si el usuario avanza sin haber pasado por todas las vistas (lo cual no debería pasar con el flujo actual)
-    // O para un guardado final explícito si se necesitara.
     submitStep: async () => {
+      setIsSaving(true);
       try {
-        // La lógica principal de guardado ya se hizo en `saveCurrentViewPoints`.
-        // Aquí solo confirmamos que el paso está completo.
+        await saveCurrentInventory();
         const updatedOrder = { ...orderData, inventory_complete: true };
+        setIsSaving(false);
         return updatedOrder;
       } catch (errorInfo) {
-        message.error('Ocurrió un error al finalizar el inventario de carrocería.');
+        message.error('Ocurrió un error al finalizar los inventarios.');
+        setIsSaving(false);
         throw errorInfo;
       }
     }
   }));
 
-  const handleSetPointsForCurrentView = (updater) => {
-    setPointsByView(prev => {
-      const currentPoints = prev[currentView.key] || [];
-      // Si el 'updater' es una función, la ejecutamos con los puntos actuales.
-      // Si no, es el nuevo array de puntos directamente.
-      const newPoints = typeof updater === 'function' ? updater(currentPoints) : updater;
-      return {
-        ...prev,
-        [currentView.key]: newPoints,
-      };
-    });
-  };
-
-  const handleRemovePoint = async (indexToRemove) => {
-    const viewKey = currentView.key;
-    const newPoints = (pointsByView[viewKey] || []).filter((_, i) => i !== indexToRemove);
-    setPointsByView(prev => ({ ...prev, [viewKey]: newPoints }));
-  };
-
-  const goToPrevView = async () => {
-    const saved = await saveViewPoints(currentView.key);
-    if (!saved) return;
-
-    if (currentViewIndex > 0) {
-      setCurrentViewIndex(prev => prev - 1);
+  const goToPrevInventory = async () => {
+    if (currentInventoryIndex > 0) { // Solo actuar si no es el primero
+      setIsSaving(true);
+      const saved = await saveCurrentInventory();
+      setIsSaving(false);
+      if (saved) { // Solo retroceder si el guardado fue exitoso
+        setCurrentInventoryIndex(prev => prev - 1);
+      }
     }
   };
-  const goToNextView = async () => {
-    const saved = await saveViewPoints(currentView.key);
-    if (!saved) return;
-
-    if (currentViewIndex < bodyViews.length - 1) {
-      setCurrentViewIndex(prev => prev + 1);
+  const goToNextInventory = async () => {
+    if (!isLastInventory) { // Solo actuar si no es el último
+      setIsSaving(true);
+      const saved = await saveCurrentInventory();
+      setIsSaving(false);
+      if (saved) { // Solo avanzar si el guardado fue exitoso
+        setCurrentInventoryIndex(prev => prev + 1);
+      }
     }
   };
+  
+  const currentInventory = activeInventories[currentInventoryIndex];
+  
+  let ComponentToRender;
+  if (currentInventory?.component_key === 'bodywork') {
+    ComponentToRender = BodyworkInventory;
+  } else if (currentInventory) {
+    ComponentToRender = GenericInventory;
+  }
 
-  return (
-    <Form form={form} layout="vertical" initialValues={{ pointsByView: {} }}>
-      <Spin spinning={isLoading || isSaving} tip={isSaving ? "Guardando..." : "Cargando inventario..."}>
-        {!isLoading && (
-          <>
-            <Title level={4}>Inventario de Carrocería - {currentView.title}</Title>
-            <Paragraph>Progreso del inventario de carrocería. Haz clic en la imagen para marcar los daños.</Paragraph>
-            <Progress percent={progressPercent} style={{ marginBottom: 24 }} />
-            
-            <FreeSelectionBodywork
-              imageSrc={currentView.image}
-              points={pointsByView[currentView.key] || []}
-              damageTypes={damageTypes}
-              orderId={orderData?.order_id}
-              viewKey={currentView.key}
-              setPoints={handleSetPointsForCurrentView}
-              onRemovePoint={handleRemovePoint}
-            />
-            <Space style={{ marginTop: 24, width: '100%', justifyContent: 'center' }}>
-              <Button icon={<ArrowLeftOutlined />} onClick={goToPrevView} disabled={currentViewIndex === 0 || isSaving}>Vista Anterior</Button>
-              <Button icon={<ArrowRightOutlined />} onClick={goToNextView} disabled={currentViewIndex === bodyViews.length - 1 || isSaving}>Siguiente Vista</Button>
-            </Space>
-          </>
-        )}
-      </Spin>
-    </Form>
-  );
+  if (isLoading) return <Spin tip="Cargando configuración de inventarios..." />;
+  if (!activeInventories.length) return <Result status="info" title="No hay inventarios activos" subTitle="Puedes continuar al siguiente paso." />;
+  
+  return <>
+    <Progress percent={progressPercent} style={{ marginBottom: 24 }} />
+    
+    {ComponentToRender ? (
+      <ComponentToRender 
+        ref={setInventoryRef} 
+        orderData={orderData} 
+        inventoryType={currentInventory}
+        onCompletionChange={setIsCurrentInventoryComplete} 
+      />
+    ) : <Result status="warning" title="Componente de inventario no encontrado" />}
+    
+    <Space style={{ marginTop: 24, width: '100%', justifyContent: 'space-between' }}>
+      <Button onClick={goToPrevInventory} disabled={currentInventoryIndex === 0 || isSaving}>Inventario Anterior</Button>
+      <Button 
+        type="primary" 
+        onClick={goToNextInventory} 
+        // El botón se deshabilita si es el último inventario, si está guardando,
+        // O si es el inventario de carrocería (id 1) y aún no se han completado todas sus vistas.
+        disabled={isLastInventory || isSaving || (currentInventory?.inv_type_id === 1 && !isCurrentInventoryComplete)}
+      >
+        Siguiente Inventario
+      </Button>
+    </Space>
+  </>;
 });
 
 export default StepThree;

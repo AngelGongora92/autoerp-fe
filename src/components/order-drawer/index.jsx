@@ -68,18 +68,14 @@ const OrderDrawer = ({ open, onClose, order, customerMap, employeeMap }) => {
     return null;
   }
 
-  const getStatusTag = (status) => {
-    // Puedes expandir esto según los estados que manejes
-    switch (status) {
-      case 1:
-        return <Tag color="blue">Recibido</Tag>;
-      case 2:
-        return <Tag color="gold">En Proceso</Tag>;
-      case 3:
-        return <Tag color="green">Completado</Tag>;
-      default:
-        return <Tag>No Asignado</Tag>;
+  const getStatusTag = (statusId) => {
+    if (statusId === 1) {
+        return <Tag color="orange">Incompleto</Tag>;
+    } else if (statusId === 2) {
+        return <Tag color="blue">Abierto</Tag>;
     }
+    // Puedes expandir esto para otros estatus si es necesario
+    return statusId ? <Tag color="default">{`Estatus ${statusId}`}</Tag> : <Tag>N/A</Tag>;
   };
 
   return (

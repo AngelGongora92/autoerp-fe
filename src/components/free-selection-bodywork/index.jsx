@@ -1,21 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Select, Input, Button, Row, Col, Card, Space, Modal, Upload, message, Image, Typography, Form } from 'antd';
 import { CameraOutlined, CloseOutlined, UploadOutlined, EyeOutlined } from '@ant-design/icons';
-import { supabase } from '../../lib/supabase'; // Importamos el cliente de Supabase
+import { useSupabaseUpload } from '../../hooks/useSupabaseUpload'; // 1. Importamos el nuevo hook
 
 const { Option } = Select;
 
 // Este es el componente para el checklist visual de selección libre
-const FreeSelectionBodywork = ({ imageSrc, points, setPoints, damageTypes, orderId, viewKey, onRemovePoint }) => {
+const FreeSelectionBodywork = ({ imageSrc, points, setPoints, damageTypes, orderId, viewKey, onRemovePoint, inventoryTypeName }) => {
   const svgRef = useRef(null);
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
   const [currentPointIndexForUpload, setCurrentPointIndexForUpload] = useState(null);
-  const [uploading, setUploading] = useState(false);
   // Creamos un mapa de refs para poder hacer scroll a cada tarjeta individualmente
   const itemRefs = useRef(new Map());
 
-  const BUCKET_NAME = 'AutoERP-Storage'; // El nombre de tu bucket en Supabase
+  const { isUploading, isCompressing, uploadInventoryFile, deleteInventoryFile } = useSupabaseUpload(); // 2. Instanciamos el hook
 
   // Función para limpiar el punto previamente seleccionado si está vacío
   const cleanupPreviousPoint = (currentSelectedIndex) => {
@@ -39,50 +38,47 @@ const FreeSelectionBodywork = ({ imageSrc, points, setPoints, damageTypes, order
     setCurrentPointIndexForUpload(null);
   };
 
+  const beforeUploadValidation = (file) => {
+    const MAX_ORIGINAL_SIZE_MB = 10;
+    const isTooLarge = file.size / 1024 / 1024 > MAX_ORIGINAL_SIZE_MB;
+    if (isTooLarge) {
+      message.error(`El archivo es demasiado grande. El límite es de ${MAX_ORIGINAL_SIZE_MB} MB.`);
+      return Upload.LIST_IGNORE; // Previene que customRequest se ejecute
+    }
+    // Si el archivo es válido, se procederá con customRequest
+    return true;
+  };
+
   const handleImageUpload = async (options) => {
     const { file } = options;
-    if (currentPointIndexForUpload === null || !orderId) {
-      message.error("No se puede subir la imagen: falta el ID de la orden.");
-      return;
+    if (currentPointIndexForUpload === null) return;
+    
+    // Antes de subir la nueva imagen, borramos la anterior si existe
+    if (points[currentPointIndexForUpload]?.picture_path) {
+      await deleteInventoryFile(points[currentPointIndexForUpload].picture_path);
     }
 
-    setUploading(true);
-    try {
-      // 1. Determinar la carpeta del entorno
-      const envFolder = import.meta.env.MODE === 'development' ? 'dev' : 'prod';
+    // 3. Usamos la función del hook, pasándole los parámetros necesarios
+    const publicUrl = await uploadInventoryFile(file, {
+      orderId,
+      inventoryTypeName: inventoryTypeName || 'carroceria', // Usamos un default por seguridad
+      itemIdOrViewKey: viewKey,
+    });
 
-      // 2. Construir el nombre del archivo y la ruta completa
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random()}.${fileExt}`;
-      const filePath = `${envFolder}/bodywork_checklist/${orderId}/${viewKey}/${fileName}`;
-
-      console.log(`Subiendo imagen a Supabase en la ruta: ${filePath}`);
-
-      const { error: uploadError } = await supabase.storage
-        .from(BUCKET_NAME)
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data } = supabase.storage
-        .from(BUCKET_NAME)
-        .getPublicUrl(filePath);
-
-      if (!data || !data.publicUrl) {
-        throw new Error('No se pudo obtener la URL pública de la imagen.');
-      }
-
-      // Actualizamos el punto con la URL de la imagen
-      handleUpdatePoint(currentPointIndexForUpload, { picture_path: data.publicUrl });
-      
+    if (publicUrl) {
+      // Si la subida fue exitosa, actualizamos el estado del punto
+      handleUpdatePoint(currentPointIndexForUpload, { picture_path: publicUrl });
       message.success(`${file.name} subido correctamente.`);
+      // El modal ya no se cierra automáticamente.
+    }
+  };
 
-    } catch (error) {
-      message.error(`Error al subir la imagen: ${error.message}`);
-    } finally {
-      setUploading(false);
+  const handleRemoveImage = async (index) => {
+    const pointToRemoveImage = points[index];
+    if (!pointToRemoveImage?.picture_path) return;
+    if (await deleteInventoryFile(pointToRemoveImage.picture_path)) { // Esperamos a que se elimine antes de actualizar el estado
+      handleUpdatePoint(index, { picture_path: null });
+      message.success('Imagen eliminada correctamente.');
     }
   };
 
@@ -303,9 +299,9 @@ const FreeSelectionBodywork = ({ imageSrc, points, setPoints, damageTypes, order
         footer={
           <Space>
             {points[currentPointIndexForUpload]?.picture_path && (
-              <Upload customRequest={handleImageUpload} showUploadList={false}>
-                <Button loading={uploading}>
-                  {uploading ? 'Subiendo...' : 'Cambiar Imagen'}
+              <Upload customRequest={handleImageUpload} showUploadList={false} beforeUpload={beforeUploadValidation}>
+                <Button loading={isUploading || isCompressing}>
+                  {isCompressing ? 'Comprimiendo...' : (isUploading ? 'Subiendo...' : 'Cambiar Imagen')}
                 </Button>
               </Upload>
             )}
@@ -314,21 +310,32 @@ const FreeSelectionBodywork = ({ imageSrc, points, setPoints, damageTypes, order
             </Button>
           </Space>
         }
-        destroyOnClose
+      destroyOnClose
       >
         {points[currentPointIndexForUpload]?.picture_path && (
           <div style={{ marginBottom: 24, textAlign: 'center' }}>
             <Typography.Title level={5}>Imagen Actual</Typography.Title>
-            <Image
-              width={200}
-              src={points[currentPointIndexForUpload].picture_path}
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <Image
+                width={200}
+                src={points[currentPointIndexForUpload].picture_path}
+              />
+              <Button
+                type="text"
+                danger
+                icon={<CloseOutlined style={{ fontSize: '18px' }} />}
+                onClick={() => handleRemoveImage(currentPointIndexForUpload)}
+                loading={isUploading}
+                style={{ position: 'absolute', top: 0, right: 0, zIndex: 1 }}
             />
+            </div>
           </div>
         )}
         {!points[currentPointIndexForUpload]?.picture_path && (
           <Upload.Dragger 
             customRequest={handleImageUpload} 
             showUploadList={false}
+            beforeUpload={beforeUploadValidation}
             maxCount={1}
           >
             <p className="ant-upload-drag-icon">

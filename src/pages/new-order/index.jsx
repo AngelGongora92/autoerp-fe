@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button, message, Steps, Card, Spin } from 'antd';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import StepOne from './step-one.jsx';
 import StepTwo from './step-two.jsx';
@@ -18,24 +18,16 @@ const steps = [
 const NewOrderPage = () => {
   const [current, setCurrent] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [isStepThreeLastView, setIsStepThreeLastView] = useState(false);
+  const [isStepThreeComplete, setIsStepThreeComplete] = useState(false);
   const [orderData, setOrderData] = useState(null); // Estado para guardar la orden
   const stepOneRef = useRef(null);
   const stepTwoRef = useRef(null); // Referencia para el Paso 2
   const stepThreeRef = useRef(null); // Referencia para el Paso 3
+  const apiUrl = import.meta.env.VITE_API_URL;
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (current === 2) {
-      // Cuando entramos al paso 3, verificamos si ya estamos en la última vista.
-      // Usamos un timeout para asegurarnos que el ref del hijo esté disponible.
-      setTimeout(() => {
-        setIsStepThreeLastView(stepThreeRef.current?.isLastView ?? false);
-      }, 0);
-    }
-  }, [current]);
-
-  const handleStepThreeViewChange = (isLast) => {
-    setIsStepThreeLastView(isLast);
+  const handleStepThreeCompletionChange = (isComplete) => {
+    setIsStepThreeComplete(isComplete);
   };
 
   const next = async () => {
@@ -68,22 +60,15 @@ const NewOrderPage = () => {
       }
     } else if (current === 2) {
       setLoading(true);
-      // El paso 3 ahora tiene su propia navegación interna.
-      // Llamamos a `handleNextView` que nos dirá si ya podemos avanzar al siguiente paso.
-      const canAdvance = await stepThreeRef.current.handleNextView();
-      setIsStepThreeLastView(stepThreeRef.current?.isLastView ?? false);
-      setLoading(false); // `handleNextView` tiene su propio spinner, así que quitamos el del botón principal.
-      
-      if (canAdvance) {
-        try {
-          // Si ya no hay más vistas, obtenemos los datos finales.
-          const updatedOrder = await stepThreeRef.current.submitStep();
-          setOrderData(updatedOrder);
-          message.success('Inventario de carrocería completado. Avanzando...');
-          setCurrent(3);
-        } catch (error) {
-          console.error('Fallo al finalizar el paso 3:', error);
-        }
+      try {
+        const updatedOrder = await stepThreeRef.current.submitStep();
+        setOrderData(updatedOrder);
+        message.success('Inventarios completados. Avanzando...');
+        setCurrent(3);
+      } catch (error) {
+        console.error('Fallo al finalizar el paso 3:', error);
+      } finally {
+        setLoading(false);
       }
     } else {
       setCurrent(current + 1); // Para otros pasos, solo avanzamos
@@ -91,20 +76,8 @@ const NewOrderPage = () => {
   };
 
   const prev = async () => {
-    if (current === 2) {
-      setLoading(true);
-      try {
-        // Guardamos los puntos de la vista actual antes de retroceder
-        await stepThreeRef.current.saveCurrentViewPoints();
-        setCurrent(current - 1);
-      } catch (error) {
-        console.error("Error al guardar antes de retroceder:", error);
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      setCurrent(current - 1);
-    }
+    // La lógica de guardado al retroceder ahora es interna de StepThree
+    setCurrent(current - 1);
   };
 
   const items = steps.map((item) => ({
@@ -137,7 +110,7 @@ const NewOrderPage = () => {
       <div style={contentStyle}>
         {current === 0 && <StepOne ref={stepOneRef} />}
         {current === 1 && <StepTwo ref={stepTwoRef} orderData={orderData} />}
-        {current === 2 && <StepThree ref={stepThreeRef} orderData={orderData} onViewChange={handleStepThreeViewChange} />}
+        {current === 2 && <StepThree ref={stepThreeRef} orderData={orderData} onCompletionChange={handleStepThreeCompletionChange} />}
         {current === 3 && <h2>Paso 4: Resumen y Finalización</h2>}
       </div>
 
@@ -152,13 +125,33 @@ const NewOrderPage = () => {
             type="primary" 
             onClick={next} 
             loading={loading} // Muestra un estado de carga
-            disabled={loading || (current === 2 && !isStepThreeLastView)}
+            disabled={loading || (current === 2 && !isStepThreeComplete)}
           >
             Siguiente
           </Button>
         )}
         {current === steps.length - 1 && (
-          <Button type="primary" onClick={() => message.success('¡Orden creada con éxito!')}>
+          <Button type="primary" onClick={async () => {
+            if (!orderData || !orderData.order_id) {
+              message.error('No se pudo finalizar la orden porque no se encontró el ID.');
+              return;
+            }
+            try {
+              const response = await fetch(`${apiUrl}/orders/${orderData.order_id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ op_status_id: 2 }), // 2: Abierto
+              });
+              if (!response.ok) {
+                throw new Error('No se pudo actualizar el estatus de la orden.');
+              }
+              message.success('¡Orden creada con éxito!');
+              navigate('/orders');
+            } catch (error) {
+              message.error(error.message || 'Ocurrió un error al finalizar la orden.');
+            }
+          }}
+          loading={loading}>
             Finalizar
           </Button>
         )}

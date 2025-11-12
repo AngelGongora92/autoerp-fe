@@ -1,19 +1,21 @@
-import { Routes, Route } from "react-router-dom";
-import OrdersPage from "../../pages/orders/index.jsx";
-import UsersPage from "../../pages/users/index.jsx";
-import AppointmentsPage from "../../pages/appointments/index.jsx";
-import NewOrderPage from "../../pages/new-order/index.jsx";
+import React from 'react';
+import { Route, Routes } from 'react-router-dom';
+import OrdersInventoriesPage from '../../pages/orders-inventories';
+import NewOrderPage from '../../pages/new-order';
+import UsersPage from '../../pages/users';
+import AppointmentsPage from '../../pages/appointments';
+import OrdersPage from '../../pages/orders';
 
-
-function AppRoutes() {
-    return (
-        <Routes>
-            <Route path="/orders" element={<OrdersPage />} />
-            <Route path="/users" element={<UsersPage />} />
-            <Route path="/appointments" element={<AppointmentsPage />} />
-            <Route path="/new-order" element={<NewOrderPage />} />
-        </Routes>
-    )
-}
+const AppRoutes = () => (
+  <Routes>
+    {/* Rutas existentes */}
+    <Route path="/orders-inventories" element={<OrdersInventoriesPage />} />
+    <Route path="/new-order" element={<NewOrderPage />} />
+    {/* Rutas corregidas */}
+    <Route path="/users" element={<UsersPage />} />
+    <Route path="/appointments" element={<AppointmentsPage />} />
+    <Route path="/orders" element={<OrdersPage />} />
+  </Routes>
+);
 
 export default AppRoutes;
