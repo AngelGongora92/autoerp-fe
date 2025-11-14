@@ -5,6 +5,7 @@ import NewOrderPage from '../../pages/new-order';
 import UsersPage from '../../pages/users';
 import AppointmentsPage from '../../pages/appointments';
 import OrdersPage from '../../pages/orders';
+import NewAppointmentPage from '../../pages/new-appoinment';
 
 const AppRoutes = () => (
   <Routes>
@@ -15,6 +16,7 @@ const AppRoutes = () => (
     <Route path="/users" element={<UsersPage />} />
     <Route path="/appointments" element={<AppointmentsPage />} />
     <Route path="/orders" element={<OrdersPage />} />
+    <Route path="/new-appointment" element={<NewAppointmentPage />} />
   </Routes>
 );
 
